@@ -11,8 +11,7 @@ import CreateProductScreen from "./screens/CreateProduct";
 import ProductDetailsScreen from "./screens/ProductDetailsScreen";
 import HomeScreen from "./screens/HomeScreen";
 import SellerAccountTabs from "./screens/SellerAccountTabs";
-import AccountScreen from "./screens/AccountScreen"; 
-import SellerHub from "./screens/SellerHub"; // ✅ Import SellerHub
+import SellerHub from "./screens/SellerHub"; // ✅ Import SellerHub.js
 
 const Stack = createStackNavigator();
 
@@ -42,8 +41,12 @@ export default function App() {
               component={SellerAccountTabs}
               options={{ title: "Seller Account", headerShown: false }}
             />
-            <Stack.Screen name="Account" component={AccountScreen} options={{ title: "Account" }} />
-            <Stack.Screen name="SellerHub" component={SellerHub} options={{ title: "Seller Hub" }} /> 
+            {/* ✅ Add SellerHub Screen */}
+            <Stack.Screen
+              name="SellerHubScreen"
+              component={SellerHub}
+              options={{ title: "Seller Hub", headerShown: false }}
+            />
           </Stack.Navigator>
         </NavigationContainer>
       </AppProvider>
