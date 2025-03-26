@@ -1,15 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, Image, StyleSheet, TouchableOpacity } from "react-native";
+import { 
+  View, Text, FlatList, Image, StyleSheet, TouchableOpacity, 
+  Modal, TextInput, Button 
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { getFirestore, collection, onSnapshot } from "firebase/firestore";
+import { getFirestore, collection, onSnapshot, doc, getDoc, setDoc } from "firebase/firestore";
+import { auth } from "../firebaseConfig"; // Ensure auth is correctly imported
 
 const db = getFirestore();
 
 const HomeScreen = () => {
   const [products, setProducts] = useState([]);
+  const [username, setUsername] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
   const navigation = useNavigation();
 
   useEffect(() => {
+    // Fetch products
     const unsubscribe = onSnapshot(collection(db, "products"), (snapshot) => {
       const productList = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -21,6 +28,35 @@ const HomeScreen = () => {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    // Check if user has a username
+    const checkUsername = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          if (!userData.username) {
+            setShowPopup(true);
+          }
+        }
+      }
+    };
+
+    checkUsername();
+  }, []);
+
+  const handleSetUsername = async () => {
+    const user = auth.currentUser;
+    if (user && username.trim()) {
+      const userRef = doc(db, "users", user.uid);
+      await setDoc(userRef, { username }, { merge: true });
+      setShowPopup(false);
+    }
+  };
+
   const renderItem = ({ item }) => (
     <TouchableOpacity
       style={styles.productCard}
@@ -28,9 +64,7 @@ const HomeScreen = () => {
     >
       <Image source={{ uri: item.images[0] }} style={styles.image} />
       <View style={styles.infoContainer}>
-        {/* Title on top */}
         <Text style={styles.title}>{item.title}</Text>
-        {/* Prices below the title */}
         <View style={styles.priceContainer}>
           <Text style={styles.label}>Price:</Text>
           <Text style={styles.price}>${item.fullPrice}</Text>
@@ -48,10 +82,26 @@ const HomeScreen = () => {
         data={products}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        numColumns={2} // ✅ Two products per row
-        columnWrapperStyle={styles.row} // ✅ Ensures proper spacing
-        contentContainerStyle={{ paddingBottom: 20 }} // ✅ Adds bottom padding
+        numColumns={2}
+        columnWrapperStyle={styles.row}
+        contentContainerStyle={{ paddingBottom: 20 }}
       />
+
+      {/* Username Popup Modal */}
+      <Modal visible={showPopup} transparent animationType="slide">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Choose a Username</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter username"
+              value={username}
+              onChangeText={setUsername}
+            />
+            <Button title="Save" onPress={handleSetUsername} />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -93,33 +143,49 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
   },
   infoContainer: {
-    alignItems: "center", // ✅ Centers title and prices
+    alignItems: "center",
     marginTop: 5,
   },
   title: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "black", // ✅ Ensures title remains black
+    color: "black",
     textAlign: "center",
   },
   priceContainer: {
     flexDirection: "row",
-    justifyContent: "center", // ✅ Centers the prices
+    justifyContent: "center",
     alignItems: "center",
     marginTop: 2,
   },
   label: {
     fontSize: 12,
     fontWeight: "bold",
-    color: "gray", // ✅ Labels in gray
+    color: "gray",
     marginHorizontal: 2,
   },
   price: {
-    fontSize: 12, // ✅ Dynamic smaller size
+    fontSize: 12,
     fontWeight: "bold",
     color: "green",
     marginHorizontal: 2,
   },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContent: {
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 10,
+    width: "80%",
+    alignItems: "center",
+  },
+  modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
+  input: { borderWidth: 1, borderColor: "#ccc", padding: 8, width: "100%", marginBottom: 10 },
 });
 
 export default HomeScreen;

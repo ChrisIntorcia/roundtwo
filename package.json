@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web"
   },
   "dependencies": {
@@ -20,6 +20,7 @@
     "@react-navigation/stack": "^7.1.2",
     "expo": "^52.0.38",
     "expo-auth-session": "~6.0.3",
+    "expo-dev-client": "~5.0.14",
     "expo-image-manipulator": "^13.0.6",
     "expo-image-picker": "~16.0.6",
     "expo-random": "^14.0.1",
@@ -27,6 +28,7 @@
     "firebase": "^11.4.0",
     "react": "18.3.1",
     "react-native": "0.76.7",
+    "react-native-agora": "^4.5.2",
     "react-native-dropdown-picker": "^5.4.6",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-modal": "^14.0.0-rc.0",
@@ -39,7 +41,8 @@
     "react-native-vector-icons": "^10.2.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0"
+    "@babel/core": "^7.20.0",
+    "@react-native-community/cli": "^18.0.0"
   },
   "private": true
 }

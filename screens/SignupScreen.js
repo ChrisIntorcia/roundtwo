@@ -12,7 +12,7 @@ const SignupScreen = ({ navigation }) => {
     try {
       await signUp(email, password, fullName);
       await login(email, password); // Auto login after signup
-      navigation.navigate("MainApp");
+      navigation.navigate("MainApp"); // Navigates to MainApp where username prompt will appear
     } catch (err) {
       setError(err.message);
     }

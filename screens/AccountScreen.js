@@ -2,8 +2,11 @@ import React, { useContext, useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { getAuth, signOut } from "firebase/auth";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
 import { AppContext } from "../context/AppContext";
 import SellerHub from "./SellerHub";
+
+const db = getFirestore();
 
 const AccountScreen = () => {
   const navigation = useNavigation();
@@ -11,12 +14,28 @@ const AccountScreen = () => {
   const { isSeller } = useContext(AppContext);
   const auth = getAuth();
   const [activeTab, setActiveTab] = useState("account");
+  const [username, setUsername] = useState("User"); // Default if username is missing
 
   useEffect(() => {
     if (route.params?.screen === "SellerHub") {
       setActiveTab("sellerHub");
     }
   }, [route.params]);
+
+  useEffect(() => {
+    const fetchUsername = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          setUsername(userSnap.data().username || "User");
+        }
+      }
+    };
+
+    fetchUsername();
+  }, []);
 
   const handleLogout = () => {
     signOut(auth)
@@ -28,7 +47,7 @@ const AccountScreen = () => {
     <View style={styles.container}>
       <View style={styles.profileHeader}>
         <TouchableOpacity onPress={() => navigation.navigate("ProfileScreen")}>
-          <Text style={styles.username}>mtb1162 ▼</Text>
+          <Text style={styles.username}>{username} ▼</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.profileButton}
