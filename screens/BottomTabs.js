@@ -116,9 +116,12 @@ const BottomTabs = ({ navigation }) => {
               <TouchableOpacity style={styles.blueButton} onPress={() => { closeModals(); navigation.navigate("CreateProductScreen"); }}>
                 <Text style={styles.optionButtonText}>Create a Product</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.blueButton} onPress={() => navigation.navigate("ScheduleShowScreen")}>
-                <Text style={styles.optionButtonText}>Schedule a Show</Text>
-              </TouchableOpacity>
+              <TouchableOpacity style={styles.blueButton} onPress={() => {
+          closeModals();
+          navigation.navigate("GoLiveScreen");
+        }}>
+          <Text style={styles.optionButtonText}>Schedule a Show</Text>
+        </TouchableOpacity>
               <TouchableOpacity 
   style={styles.blueButton} 
   onPress={() => {

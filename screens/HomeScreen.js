@@ -1,191 +1,74 @@
-import React, { useEffect, useState } from "react";
-import { 
-  View, Text, FlatList, Image, StyleSheet, TouchableOpacity, 
-  Modal, TextInput, Button 
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { getFirestore, collection, onSnapshot, doc, getDoc, setDoc } from "firebase/firestore";
-import { auth } from "../firebaseConfig"; // Ensure auth is correctly imported
+import React, { useEffect, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '../firebaseConfig'; // make sure this points to your Firestore setup
+import { useNavigation } from '@react-navigation/native';
 
-const db = getFirestore();
-
-const HomeScreen = () => {
-  const [products, setProducts] = useState([]);
-  const [username, setUsername] = useState("");
-  const [showPopup, setShowPopup] = useState(false);
+export default function HomeScreen() {
+  const [streams, setStreams] = useState([]);
   const navigation = useNavigation();
 
   useEffect(() => {
-    // Fetch products
-    const unsubscribe = onSnapshot(collection(db, "products"), (snapshot) => {
-      const productList = snapshot.docs.map((doc) => ({
+    const q = query(collection(db, 'livestreams'), where('isLive', '==', true));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const liveStreams = snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data(),
+        ...doc.data()
       }));
-      setProducts(productList);
+      setStreams(liveStreams);
     });
 
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    // Check if user has a username
-    const checkUsername = async () => {
-      const user = auth.currentUser;
-      if (user) {
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-
-        if (userSnap.exists()) {
-          const userData = userSnap.data();
-          if (!userData.username) {
-            setShowPopup(true);
-          }
-        }
-      }
-    };
-
-    checkUsername();
-  }, []);
-
-  const handleSetUsername = async () => {
-    const user = auth.currentUser;
-    if (user && username.trim()) {
-      const userRef = doc(db, "users", user.uid);
-      await setDoc(userRef, { username }, { merge: true });
-      setShowPopup(false);
-    }
-  };
-
-  const renderItem = ({ item }) => (
+  const renderStream = ({ item }) => (
     <TouchableOpacity
-      style={styles.productCard}
-      onPress={() => navigation.navigate("ProductDetailsScreen", { product: item })}
+      style={styles.card}
+      onPress={() => navigation.navigate('ViewerScreen', { channel: item.channel })}
     >
-      <Image source={{ uri: item.images[0] }} style={styles.image} />
-      <View style={styles.infoContainer}>
-        <Text style={styles.title}>{item.title}</Text>
-        <View style={styles.priceContainer}>
-          <Text style={styles.label}>Price:</Text>
-          <Text style={styles.price}>${item.fullPrice}</Text>
-          <Text style={styles.label}>Group Price:</Text>
-          <Text style={styles.price}>${item.groupPrice}</Text>
-        </View>
+      <Image source={{ uri: item.thumbnailUrl }} style={styles.thumbnail} />
+      <View style={styles.liveBadge}>
+        <Text style={styles.liveText}>Live • {item.viewers}</Text>
       </View>
+      <Text style={styles.streamer}>{item.streamer}</Text>
     </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Latest Products</Text>
+      <Text style={styles.header}>📺 Live Streams</Text>
       <FlatList
-        data={products}
+        data={streams}
+        renderItem={renderStream}
         keyExtractor={(item) => item.id}
-        renderItem={renderItem}
         numColumns={2}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={styles.grid}
       />
-
-      {/* Username Popup Modal */}
-      <Modal visible={showPopup} transparent animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Choose a Username</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter username"
-              value={username}
-              onChangeText={setUsername}
-            />
-            <Button title="Save" onPress={handleSetUsername} />
-          </View>
-        </View>
-      </Modal>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, backgroundColor: '#fff' },
+  header: { fontSize: 24, fontWeight: 'bold', padding: 16 },
+  grid: { paddingHorizontal: 10 },
+  card: {
     flex: 1,
-    padding: 10,
-    backgroundColor: "#f9f9f9",
-  },
-  header: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  productCard: {
-    flex: 1,
-    backgroundColor: "#fff",
-    padding: 10,
-    marginHorizontal: 5,
-    borderRadius: 8,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  image: {
-    width: "100%",
-    height: 150,
-    borderRadius: 8,
-    resizeMode: "cover",
-  },
-  infoContainer: {
-    alignItems: "center",
-    marginTop: 5,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "black",
-    textAlign: "center",
-  },
-  priceContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 2,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "gray",
-    marginHorizontal: 2,
-  },
-  price: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "green",
-    marginHorizontal: 2,
-  },
-  // Modal styles
-  modalContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  modalContent: {
-    backgroundColor: "white",
-    padding: 20,
+    margin: 8,
     borderRadius: 10,
-    width: "80%",
-    alignItems: "center",
+    overflow: 'hidden',
+    backgroundColor: '#eee',
   },
-  modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
-  input: { borderWidth: 1, borderColor: "#ccc", padding: 8, width: "100%", marginBottom: 10 },
+  thumbnail: { width: '100%', height: 150 },
+  liveBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'red',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  liveText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+  streamer: { padding: 8, fontWeight: '600' },
 });
-
-export default HomeScreen;
