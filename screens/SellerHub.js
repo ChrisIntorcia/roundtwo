@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-nati
 import { getAuth } from "firebase/auth";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
 import { AppContext } from "../context/AppContext";
+import { useNavigation } from "@react-navigation/native"; 
 
-const SellerHub = ({ navigation }) => {
+const SellerHub = () => {
+  const navigation = useNavigation();
   const { isSeller } = useContext(AppContext);
   const [userInfo, setUserInfo] = useState(null);
   const auth = getAuth();
@@ -31,11 +33,9 @@ const SellerHub = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Content Section */}
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Grid Items */}
         <View style={styles.gridContainer}>
-          <TouchableOpacity style={styles.gridItem}>
+          <TouchableOpacity style={styles.gridItem} onPress={() => navigation.navigate('Inventory')}>
             <Text style={styles.gridText}>Inventory</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.gridItem}>
@@ -46,7 +46,6 @@ const SellerHub = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* List Items */}
         <TouchableOpacity style={styles.option}>
           <Text style={styles.optionText}>Affiliate Program: Earn Cash</Text>
         </TouchableOpacity>
@@ -63,7 +62,6 @@ const SellerHub = ({ navigation }) => {
           <Text style={styles.optionText}>Seller Status</Text>
         </TouchableOpacity>
 
-        {/* Adding extra margin to the bottom */}
         <View style={styles.lastOption}></View>
       </ScrollView>
     </View>
@@ -146,7 +144,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   lastOption: {
-    marginBottom: 30,  // Adding extra space at the bottom
+    marginBottom: 30,
   },
 });
 

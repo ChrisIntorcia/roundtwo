@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { db } from '../firebaseConfig'; // make sure this points to your Firestore setup
+import { db } from '../firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 
 export default function HomeScreen() {

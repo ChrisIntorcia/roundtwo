@@ -15,8 +15,8 @@ import BrowseScreen from "./screens/BrowseScreen";
 import SellerAccountTabs from "./screens/SellerAccountTabs";
 import AccountScreen from "./screens/AccountScreen";
 import SellerHub from "./screens/SellerHub";
-
-// ✅ Import ViewerScreen
+import Inventory from "./screens/sellerHub/Inventory";
+import ProfileScreen from "./screens/ProfileScreen";
 import ViewerScreen from "./screens/ViewerScreen";
 
 const Stack = createStackNavigator();
@@ -77,12 +77,20 @@ export default function App() {
               component={GoLiveScreen}
               options={{ title: "Start Live Stream" }}
             />
-
-            {/* ✅ Register ViewerScreen for stream viewing */}
             <Stack.Screen
               name="ViewerScreen"
               component={ViewerScreen}
               options={{ title: "Live Stream" }}
+            />
+            <Stack.Screen
+              name="Inventory"
+              component={Inventory}
+              options={{ title: "My Inventory" }}
+            />
+            <Stack.Screen
+              name="ProfileScreen"
+              component={ProfileScreen}
+              options={{ title: "Profile" }}
             />
           </Stack.Navigator>
         </NavigationContainer>

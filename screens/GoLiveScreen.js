@@ -2,13 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
-  Button,
   StyleSheet,
   Platform,
   PermissionsAndroid,
-  TextInput,
   FlatList,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import {
   createAgoraRtcEngine,
@@ -16,29 +15,33 @@ import {
   ClientRoleType,
   RtcSurfaceView,
 } from 'react-native-agora';
-import { doc, setDoc } from 'firebase/firestore';
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  collection,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  onSnapshot,
+} from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { db } from '../firebaseConfig';
 
-const saveStreamToFirestore = async (userId, userName) => {
-  await setDoc(doc(db, 'livestreams', userId), {
-    streamer: userName,
-    channel: CHANNEL_NAME,
-    thumbnailUrl: 'https://link-to-thumbnail',
-    viewers: 0,
-    isLive: true,
-  });
-};
-
 const APP_ID = '262ef45d2c514a5ebb129a836c4bff93';
-const CHANNEL_NAME = 'livestream';
 
 export default function GoLiveScreen() {
   const [joined, setJoined] = useState(false);
   const [engineReady, setEngineReady] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [products, setProducts] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [messageText, setMessageText] = useState('');
-  const [purchaseMessage, setPurchaseMessage] = useState(null);
+
   const rtcEngineRef = useRef(null);
+  const auth = getAuth();
+  const user = auth.currentUser;
+  const channelName = user?.uid || 'livestream';
 
   useEffect(() => {
     const init = async () => {
@@ -63,7 +66,7 @@ export default function GoLiveScreen() {
         engine.startPreview();
 
         engine.registerEventHandler({
-          onJoinChannelSuccess: (connection, uid, elapsed) => {
+          onJoinChannelSuccess: (connection, uid) => {
             console.log('✅ Joined channel', connection.channelId, uid);
             setJoined(true);
           },
@@ -79,6 +82,15 @@ export default function GoLiveScreen() {
     };
 
     init();
+    fetchProducts();
+
+    const unsubMessages = onSnapshot(
+      collection(db, 'livestreams', channelName, 'messages'),
+      (snapshot) => {
+        const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setMessages(msgs);
+      }
+    );
 
     return () => {
       if (rtcEngineRef.current) {
@@ -86,35 +98,68 @@ export default function GoLiveScreen() {
         rtcEngineRef.current.release();
         rtcEngineRef.current = null;
       }
+      if (user) {
+        updateDoc(doc(db, 'livestreams', user.uid), { isLive: false });
+      }
+      unsubMessages();
     };
   }, []);
 
+  const fetchProducts = async () => {
+    if (!user) return;
+    const q = query(collection(db, 'products'), where('sellerId', '==', user.uid));
+    const querySnapshot = await getDocs(q);
+    const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    setProducts(items);
+  };
+
+  const updateSelectedProduct = async (product) => {
+    if (!user) return;
+    await setDoc(doc(db, 'livestreams', user.uid), {
+      selectedProduct: product,
+    }, { merge: true });
+    setSelectedProduct(product);
+  };
+
   const startLiveStream = async () => {
-    if (!engineReady || !rtcEngineRef.current) return;
-    try {
-      await saveStreamToFirestore('userId', 'userName'); // replace with actual values
-      rtcEngineRef.current.joinChannel('', CHANNEL_NAME, 0, {});
-    } catch (err) {
-      console.log('Join error', err);
-    }
+    if (!engineReady || !rtcEngineRef.current || !user) return;
+    await setDoc(
+      doc(db, 'livestreams', user.uid),
+      {
+        streamer: user.displayName || 'Streamer',
+        channel: user.uid,
+        thumbnailUrl: 'https://link-to-thumbnail',
+        viewers: 0,
+        isLive: true,
+        createdAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+    rtcEngineRef.current.joinChannel('', channelName, 0, {});
   };
 
-  const sendMessage = () => {
-    if (messageText.trim()) {
-      const newMessage = { id: Date.now().toString(), text: messageText };
-      setMessages((prev) => [...prev, newMessage]);
-      setMessageText('');
-    }
-  };
-
-  const makePurchase = () => {
-    setPurchaseMessage('🛍️ Thanks for your purchase!');
-    setTimeout(() => setPurchaseMessage(null), 3000);
-  };
+  const renderProductItem = ({ item }) => (
+    <TouchableOpacity
+      style={[
+        styles.productCard,
+        item.id === selectedProduct?.id && { borderColor: 'blue', borderWidth: 2 },
+      ]}
+      onPress={() => updateSelectedProduct(item)}
+    >
+      <Image source={{ uri: item.images?.[0] }} style={styles.productImage} />
+      <Text style={styles.productTitle}>{item.title}</Text>
+      <Text style={styles.productPrice}>${item.fullPrice}</Text>
+      <Text style={styles.productQty}>Qty: {item.groupAmount}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
-      {joined ? (
+      {!joined ? (
+        <TouchableOpacity style={styles.startButton} onPress={startLiveStream}>
+          <Text style={styles.startText}>📡 Start Live Stream</Text>
+        </TouchableOpacity>
+      ) : (
         <>
           <RtcSurfaceView
             style={styles.video}
@@ -124,44 +169,93 @@ export default function GoLiveScreen() {
           <FlatList
             data={messages}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <Text style={styles.message}>{item.text}</Text>}
-            style={styles.chatBox}
+            renderItem={({ item }) => (
+              <Text style={styles.message}>{item.sender}: {item.text}</Text>
+            )}
+            style={styles.chatOverlay}
           />
 
-          <View style={styles.inputRow}>
-            <TextInput
-              value={messageText}
-              onChangeText={setMessageText}
-              placeholder="Type a message..."
-              style={styles.input}
-            />
-            <Button title="Send" onPress={sendMessage} />
-          </View>
+          <FlatList
+            data={products}
+            keyExtractor={(item) => item.id}
+            horizontal
+            renderItem={renderProductItem}
+            style={styles.carousel}
+          />
 
-          <TouchableOpacity style={styles.purchaseButton} onPress={makePurchase}>
-            <Text style={styles.purchaseText}>💳 Buy Now</Text>
-          </TouchableOpacity>
-
-          {purchaseMessage && <Text style={styles.purchaseConfirm}>{purchaseMessage}</Text>}
+          {selectedProduct && (
+            <View style={styles.selectedProduct}>
+              <Text style={styles.productTitle}>{selectedProduct.title}</Text>
+              <Text style={styles.productPrice}>${selectedProduct.fullPrice}</Text>
+              <Text style={styles.productQty}>Qty: {selectedProduct.groupAmount}</Text>
+            </View>
+          )}
         </>
-      ) : (
-        <Button title="Start Live Stream" onPress={startLiveStream} disabled={!engineReady} />
       )}
-
-      <Text style={styles.infoText}>{joined ? '🔴 You are live!' : 'Ready to go live'}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
-  video: { width: '100%', height: '50%' },
-  infoText: { marginTop: 16, fontSize: 18, fontWeight: 'bold' },
-  chatBox: { flex: 1, width: '100%', paddingHorizontal: 20, marginTop: 10 },
-  message: { fontSize: 16, paddingVertical: 4 },
-  inputRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginBottom: 10 },
-  input: { flex: 1, borderColor: '#ccc', borderWidth: 1, borderRadius: 8, padding: 8, marginRight: 10 },
-  purchaseButton: { backgroundColor: '#2196F3', padding: 10, borderRadius: 8, marginVertical: 10 },
-  purchaseText: { color: '#fff', fontWeight: 'bold' },
-  purchaseConfirm: { fontSize: 16, color: 'green', marginTop: 10 },
+  container: { flex: 1, backgroundColor: '#000' },
+  video: { flex: 1 },
+  startButton: {
+    marginTop: 100,
+    padding: 20,
+    backgroundColor: '#2196F3',
+    alignSelf: 'center',
+    borderRadius: 12,
+  },
+  startText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  chatOverlay: {
+    position: 'absolute',
+    top: 60,
+    left: 10,
+    right: 10,
+    maxHeight: 200,
+    paddingHorizontal: 10,
+  },
+  message: {
+    color: '#fff',
+    fontSize: 14,
+    marginBottom: 4,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    padding: 4,
+    borderRadius: 5,
+  },
+  carousel: {
+    position: 'absolute',
+    bottom: 110,
+    paddingLeft: 10,
+  },
+  productCard: {
+    marginRight: 10,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 10,
+    width: 120,
+    alignItems: 'center',
+  },
+  productImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  productTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  productPrice: { fontSize: 12, color: '#555' },
+  productQty: { fontSize: 12, color: '#999' },
+  selectedProduct: {
+    position: 'absolute',
+    bottom: 20,
+    left: 10,
+    right: 10,
+    backgroundColor: '#1e1e1e',
+    padding: 10,
+    borderRadius: 10,
+  },
 });

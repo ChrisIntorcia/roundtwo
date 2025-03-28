@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { getFirestore, collection, addDoc, Timestamp } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getApp } from "firebase/app"; 
+import { getAuth } from 'firebase/auth';
 
 const app = getApp();
 const db = getFirestore();
@@ -50,35 +51,49 @@ const CreateProduct = () => {
     if (!title || !description || !fullPrice || !groupPrice || !groupAmount || !groupDescription || photos.length === 0) {
       return Alert.alert('Incomplete Fields', 'Please complete all required fields and add at least one photo.');
     }
-
+  
     try {
+      const user = getAuth().currentUser;
+      if (!user) {
+        return Alert.alert('User not authenticated');
+      }
+  
       const imageUrls = await Promise.all(
         photos.map(async (photo, index) => {
           const response = await fetch(photo);
           const blob = await response.blob();
-          const storageRef = ref(storage, `products/${Date.now()}_${index}`);
+          const storageRef = ref(storage, `products/${user.uid}/${Date.now()}_${index}`);
           await uploadBytes(storageRef, blob);
           return getDownloadURL(storageRef);
         })
       );
-
-      await addDoc(collection(db, "products"), {
+  
+      // ✅ Define productData once
+      const productData = {
+        sellerId: user.uid, // For filtering later
         title,
         description,
         fullPrice,
         groupPrice,
-        groupAmount, // ✅ Save Group Amount to Firestore
-        groupDescription, // ✅ Save Group Description to Firestore
+        groupAmount,
+        groupDescription,
         images: imageUrls,
         createdAt: Timestamp.now(),
-      });
-
+      };
+  
+      // Save in user's subcollection
+      await addDoc(collection(db, 'users', user.uid, 'products'), productData);
+  
+      // Save in top-level collection (used for carousel)
+      await addDoc(collection(db, 'products'), productData);
+  
       Alert.alert('Published', 'Your product has been published successfully!');
     } catch (error) {
       console.error("Error publishing product:", error);
       Alert.alert('Error', 'There was an issue publishing your product.');
     }
   };
+  
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
