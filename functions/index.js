@@ -241,6 +241,7 @@ exports.verifyStripeStatus = onRequest({
 });
 
 // ✅ Direct PaymentIntent with app fee
+// ✅ One-tap Checkout Flow (no payment sheet)
 exports.createPaymentIntent = onRequest({
   secrets: [STRIPE_SECRET_KEY],
   timeoutSeconds: 60,
@@ -256,23 +257,45 @@ exports.createPaymentIntent = onRequest({
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      const customer = await stripe.customers.create({ email: buyerEmail });
+      // Check for existing customer
+      const customers = await stripe.customers.list({ email: buyerEmail });
+      let customer = customers.data[0];
 
+      if (!customer) {
+        customer = await stripe.customers.create({ email: buyerEmail });
+      }
+
+      // Retrieve saved payment methods
+      const paymentMethods = await stripe.paymentMethods.list({
+        customer: customer.id,
+        type: "card",
+      });
+
+      const defaultPaymentMethod = paymentMethods.data[0];
+
+      if (!defaultPaymentMethod) {
+        return res.status(400).json({ error: "No saved payment method found." });
+      }
+
+      // Create and confirm PaymentIntent immediately
       const paymentIntent = await stripe.paymentIntents.create({
         amount,
         currency: "usd",
         customer: customer.id,
+        payment_method: defaultPaymentMethod.id,
+        off_session: true,
+        confirm: true,
         application_fee_amount,
-        automatic_payment_methods: { enabled: true },
         transfer_data: {
           destination: stripeAccountId,
         },
       });
 
-      res.status(200).json({ clientSecret: paymentIntent.client_secret });
+      res.status(200).json({ success: true, paymentIntentId: paymentIntent.id });
     } catch (err) {
       console.error("❌ createPaymentIntent error:", err.message);
       res.status(500).json({ error: err.message });
     }
   });
 });
+

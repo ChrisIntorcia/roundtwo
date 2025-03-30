@@ -157,27 +157,27 @@ export default function ViewerScreen() {
   const handleBuy = async () => {
     const auth = getAuth();
     const user = auth.currentUser;
-
+  
     if (!user) {
       Alert.alert('Login Required', 'Please log in to purchase.');
       return;
     }
-
+  
     if (!selectedProduct) {
       Alert.alert('Product Error', 'No product selected.');
       return;
     }
-
+  
     try {
       const sellerRef = doc(db, 'users', selectedProduct.sellerId);
       const sellerSnap = await getDoc(sellerRef);
       const stripeAccountId = sellerSnap.data()?.stripeAccountId;
-
+  
       if (!stripeAccountId) {
         Alert.alert('Seller Error', 'Seller is not set up to receive payments.');
         return;
       }
-
+  
       const res = await fetch('https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentIntent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -188,32 +188,14 @@ export default function ViewerScreen() {
           application_fee_amount: 100,
         }),
       });
-
+  
       const data = await res.json();
-
+  
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to create payment');
+        throw new Error(data.error || 'Payment failed.');
       }
-
-      const { error: initError } = await initPaymentSheet({
-        paymentIntentClientSecret: data.clientSecret,
-        merchantDisplayName: 'Roundtwo',
-      });
-
-      if (initError) {
-        Alert.alert('Payment Sheet Init Error', initError.message);
-        return;
-      }
-
-      const result = await presentPaymentSheet({
-        paymentIntentClientSecret: data.clientSecret,
-      });
-
-      if (result.error) {
-        Alert.alert('Payment Failed', result.error.message);
-        return;
-      }
-
+  
+      // Log purchase to Firestore
       await addDoc(collection(db, 'purchases'), {
         product: selectedProduct.title,
         price: parseFloat(selectedProduct.fullPrice),
@@ -221,17 +203,17 @@ export default function ViewerScreen() {
         seller: selectedProduct.sellerId,
         createdAt: new Date(),
       });
-
+  
       setPurchaseBanner(`${user.displayName || user.email} purchased ${selectedProduct.title}`);
       setShowConfetti(true);
       Alert.alert('✅ Success', 'Purchase complete!');
-
       setTimeout(() => setPurchaseBanner(null), 4000);
     } catch (error) {
       console.error('🔥 handleBuy error:', error);
       Alert.alert('Error', error.message || 'Something went wrong');
     }
   };
+  
 
   return (
     <View style={styles.container}>
