@@ -7,6 +7,8 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "scheme": "roundtwo",
+    "deepLinks": ["roundtwo://"],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -24,7 +26,18 @@
       "package": "com.chrisintorcia.roundtwo"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "config": {
+        "firebase": {
+          "apiKey": "AIzaSyCb1tCjXqrIWmAC7fPcfu-D21sobF4PkEw",
+          "authDomain": "roundtwo-cc793.firebaseapp.com",
+          "projectId": "roundtwo-cc793",
+          "storageBucket": "roundtwo-cc793.firebasestorage.app",
+          "messagingSenderId": "402284856773",
+          "appId": "1:402284856773:web:a58476112c41be95b0b7ac",
+          "measurementId": "G-HT3MMGH8HL"
+        }
+      }
     }
   }
 }

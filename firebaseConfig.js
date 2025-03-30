@@ -1,5 +1,9 @@
-import { initializeApp } from "firebase/app";
-import { initializeAuth, getReactNativePersistence } from "firebase/auth";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import {
+  initializeAuth,
+  getAuth,
+  getReactNativePersistence,
+} from "firebase/auth";
 import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
 import { getStorage } from "firebase/storage";
 import { getFirestore } from "firebase/firestore";
@@ -15,16 +19,22 @@ const firebaseConfig = {
   measurementId: "G-HT3MMGH8HL",
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase app (only once)
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Set up Firebase Auth with AsyncStorage
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(ReactNativeAsyncStorage),
-});
+// Initialize Auth only once (fallback to getAuth if already initialized)
+let auth;
+try {
+  auth = getAuth(app);
+} catch (e) {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+  });
+}
 
-// Set up Firestore & Storage
+// Firestore and Storage
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-export { app, auth, db, storage };
+// ✅ Export firebaseConfig for ReCAPTCHA
+export { app, auth, db, storage, firebaseConfig };

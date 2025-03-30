@@ -8,7 +8,10 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
+  Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   createAgoraRtcEngine,
   ChannelProfileType,
@@ -25,8 +28,10 @@ import {
   getDocs,
   updateDoc,
   onSnapshot,
+  getDoc,
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { useNavigation } from '@react-navigation/native';
 import { db } from '../firebaseConfig';
 
 const APP_ID = '262ef45d2c514a5ebb129a836c4bff93';
@@ -37,48 +42,46 @@ export default function GoLiveScreen() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [products, setProducts] = useState([]);
   const [messages, setMessages] = useState([]);
-
+  const [thumbnailLocalUri, setThumbnailLocalUri] = useState(null);
   const rtcEngineRef = useRef(null);
+
   const auth = getAuth();
   const user = auth.currentUser;
+  const navigation = useNavigation();
   const channelName = user?.uid || 'livestream';
 
   useEffect(() => {
     const init = async () => {
-      try {
-        if (Platform.OS === 'android') {
-          await PermissionsAndroid.requestMultiple([
-            PermissionsAndroid.PERMISSIONS.CAMERA,
-            PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-          ]);
-        }
-
-        const engine = createAgoraRtcEngine();
-        rtcEngineRef.current = engine;
-
-        engine.initialize({
-          appId: APP_ID,
-          channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
-        });
-
-        engine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
-        engine.enableVideo();
-        engine.startPreview();
-
-        engine.registerEventHandler({
-          onJoinChannelSuccess: (connection, uid) => {
-            console.log('✅ Joined channel', connection.channelId, uid);
-            setJoined(true);
-          },
-          onError: (err) => {
-            console.log('❌ Agora error:', err);
-          },
-        });
-
-        setEngineReady(true);
-      } catch (err) {
-        console.error('Error initializing Agora:', err);
+      if (Platform.OS === 'android') {
+        await PermissionsAndroid.requestMultiple([
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+        ]);
       }
+
+      const engine = createAgoraRtcEngine();
+      rtcEngineRef.current = engine;
+
+      engine.initialize({
+        appId: APP_ID,
+        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+      });
+
+      engine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+      engine.enableVideo();
+      engine.startPreview();
+
+      engine.registerEventHandler({
+        onJoinChannelSuccess: (connection, uid) => {
+          console.log('✅ Joined channel', connection.channelId, uid);
+          setJoined(true);
+        },
+        onError: (err) => {
+          console.log('❌ Agora error:', err);
+        },
+      });
+
+      setEngineReady(true);
     };
 
     init();
@@ -98,10 +101,14 @@ export default function GoLiveScreen() {
         rtcEngineRef.current.release();
         rtcEngineRef.current = null;
       }
-      if (user) {
-        updateDoc(doc(db, 'livestreams', user.uid), { isLive: false });
-      }
+
       unsubMessages();
+
+      if (user) {
+        updateDoc(doc(db, 'livestreams', user.uid), {
+          isLive: false,
+        });
+      }
     };
   }, []);
 
@@ -121,21 +128,101 @@ export default function GoLiveScreen() {
     setSelectedProduct(product);
   };
 
+  const pickThumbnail = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      setThumbnailLocalUri(result.assets[0].uri);
+    }
+  };
+
+  const uploadThumbnailToFirebase = async () => {
+    if (!user) {
+      throw new Error("User not authenticated for uploading thumbnail.");
+    }
+  
+    try {
+      console.log("📷 Starting upload for user:", user.uid);
+      const response = await fetch(thumbnailLocalUri);
+      const blob = await response.blob();
+  
+      const filename = `thumbnails/${user.uid}_${Date.now()}.jpg`;
+      const storageRef = ref(getStorage(), filename);
+  
+      await uploadBytes(storageRef, blob);
+      const downloadUrl = await getDownloadURL(storageRef);
+      console.log("✅ Upload successful:", downloadUrl);
+      return downloadUrl;
+    } catch (error) {
+      console.error("🔥 Firebase Storage Upload Error:", JSON.stringify(error, null, 2));
+      throw error;
+    }
+  };
+
   const startLiveStream = async () => {
     if (!engineReady || !rtcEngineRef.current || !user) return;
-    await setDoc(
-      doc(db, 'livestreams', user.uid),
-      {
-        streamer: user.displayName || 'Streamer',
-        channel: user.uid,
-        thumbnailUrl: 'https://link-to-thumbnail',
-        viewers: 0,
-        isLive: true,
-        createdAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-    rtcEngineRef.current.joinChannel('', channelName, 0, {});
+
+    if (!thumbnailLocalUri) {
+      Alert.alert('Missing Thumbnail', 'Please upload a livestream thumbnail before going live.');
+      return;
+    }
+
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const docSnapshot = await getDoc(userRef);
+
+      const stripeAccountId = docSnapshot.data()?.stripeAccountId;
+      if (!docSnapshot.exists() || !stripeAccountId) {
+        Alert.alert(
+          'Complete Bank Info',
+          'You need to set up your bank account before going live.',
+          [
+            { text: 'Go to Payouts', onPress: () => navigation.navigate('PayoutScreen') },
+            { text: 'Cancel', style: 'cancel' },
+          ]
+        );
+        return;
+      }
+
+      const verifyRes = await fetch('https://us-central1-roundtwo-cc793.cloudfunctions.net/verifyStripeStatus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stripeAccountId }),
+      });
+
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok || verifyData?.error) {
+        Alert.alert(
+          'Stripe Not Ready',
+          'Your Stripe account is not fully enabled for payouts and charges.'
+        );
+        return;
+      }
+
+      const thumbnailUrl = await uploadThumbnailToFirebase();
+
+      await setDoc(
+        doc(db, 'livestreams', user.uid),
+        {
+          streamer: user.displayName || 'Streamer',
+          channel: user.uid,
+          thumbnailUrl,
+          viewers: 0,
+          isLive: true,
+          createdAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      rtcEngineRef.current.joinChannel('', channelName, 0, {});
+    } catch (err) {
+      console.error('🔥 Error uploading thumbnail or verifying Stripe:', JSON.stringify(err, null, 2));
+      Alert.alert('Error', err.message || 'Something went wrong. Please try again.');
+    }
   };
 
   const renderProductItem = ({ item }) => (
@@ -156,15 +243,25 @@ export default function GoLiveScreen() {
   return (
     <View style={styles.container}>
       {!joined ? (
-        <TouchableOpacity style={styles.startButton} onPress={startLiveStream}>
-          <Text style={styles.startText}>📡 Start Live Stream</Text>
-        </TouchableOpacity>
+        <>
+          <TouchableOpacity style={styles.thumbnailButton} onPress={pickThumbnail}>
+            <Text style={styles.thumbnailText}>📸 Select Thumbnail (Required)</Text>
+          </TouchableOpacity>
+
+          {thumbnailLocalUri && (
+            <Image
+              source={{ uri: thumbnailLocalUri }}
+              style={{ width: 200, height: 200, marginBottom: 20, alignSelf: 'center' }}
+            />
+          )}
+
+          <TouchableOpacity style={styles.startButton} onPress={startLiveStream}>
+            <Text style={styles.startText}>📡 Start Live Stream</Text>
+          </TouchableOpacity>
+        </>
       ) : (
         <>
-          <RtcSurfaceView
-            style={styles.video}
-            canvas={{ uid: 0, renderMode: 1 }}
-          />
+          <RtcSurfaceView style={styles.video} canvas={{ uid: 0, renderMode: 1 }} />
 
           <FlatList
             data={messages}
@@ -200,13 +297,24 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   video: { flex: 1 },
   startButton: {
-    marginTop: 100,
+    marginTop: 30,
     padding: 20,
-    backgroundColor: '#2196F3',
+    backgroundColor: '#fff',
     alignSelf: 'center',
     borderRadius: 12,
   },
-  startText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  startText: { color: '#000', fontSize: 18, fontWeight: 'bold' },
+  thumbnailButton: {
+    marginTop: 100,
+    padding: 14,
+    backgroundColor: '#eee',
+    alignSelf: 'center',
+    borderRadius: 12,
+  },
+  thumbnailText: {
+    color: '#333',
+    fontWeight: '600',
+  },
   chatOverlay: {
     position: 'absolute',
     top: 60,

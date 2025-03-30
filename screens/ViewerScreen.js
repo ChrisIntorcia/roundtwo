@@ -9,8 +9,10 @@ import {
   TextInput,
   FlatList,
   TouchableOpacity,
+  Alert,
   Dimensions,
 } from 'react-native';
+import ConfettiCannon from 'react-native-confetti-cannon';
 import {
   createAgoraRtcEngine,
   ChannelProfileType,
@@ -25,11 +27,12 @@ import {
   addDoc,
   query,
   orderBy,
+  getDoc,
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { getAuth } from 'firebase/auth';
+import { initStripe, presentPaymentSheet, initPaymentSheet } from '@stripe/stripe-react-native';
 
-const { width } = Dimensions.get('window');
 const APP_ID = '262ef45d2c514a5ebb129a836c4bff93';
 
 export default function ViewerScreen() {
@@ -42,10 +45,16 @@ export default function ViewerScreen() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [purchaseBanner, setPurchaseBanner] = useState(null);
 
   const rtcEngineRef = useRef(null);
-  const auth = getAuth();
-  const user = auth.currentUser;
+
+  useEffect(() => {
+    initStripe({
+      publishableKey: 'pk_test_51LLWUzBDUXSD1c3FLs6vIFKT9eyd0O3ex9yA13jcaDhUJFcabm5VZkPZfCc7rikCWyTeVjZlM7dHXm10IlhoQBKG00g4SsRQfr',
+    });
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -97,18 +106,9 @@ export default function ViewerScreen() {
     };
   }, []);
 
-  const startWatchingStream = async () => {
-    if (!engineReady || !rtcEngineRef.current) return;
-    try {
-      rtcEngineRef.current.joinChannel('', channel || 'livestream', 0, {});
-    } catch (err) {
-      console.log('Join error', err);
-    }
-  };
-
   useEffect(() => {
-    if (engineReady) {
-      startWatchingStream();
+    if (engineReady && rtcEngineRef.current) {
+      rtcEngineRef.current.joinChannel('', channel || 'livestream', 0, {});
     }
   }, [engineReady]);
 
@@ -142,6 +142,8 @@ export default function ViewerScreen() {
   }, [channel]);
 
   const sendMessage = async () => {
+    const auth = getAuth();
+    const user = auth.currentUser;
     if (!chatInput.trim() || !user) return;
     const chatRef = collection(db, 'livestreams', channel, 'chat');
     await addDoc(chatRef, {
@@ -152,9 +154,83 @@ export default function ViewerScreen() {
     setChatInput('');
   };
 
-  const handleBuy = () => {
-    // TODO: Implement buying logic
-    alert(`🛒 Buying "${selectedProduct?.title}"...`);
+  const handleBuy = async () => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      Alert.alert('Login Required', 'Please log in to purchase.');
+      return;
+    }
+
+    if (!selectedProduct) {
+      Alert.alert('Product Error', 'No product selected.');
+      return;
+    }
+
+    try {
+      const sellerRef = doc(db, 'users', selectedProduct.sellerId);
+      const sellerSnap = await getDoc(sellerRef);
+      const stripeAccountId = sellerSnap.data()?.stripeAccountId;
+
+      if (!stripeAccountId) {
+        Alert.alert('Seller Error', 'Seller is not set up to receive payments.');
+        return;
+      }
+
+      const res = await fetch('https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentIntent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: Math.round(parseFloat(selectedProduct.fullPrice) * 100),
+          stripeAccountId,
+          buyerEmail: user.email,
+          application_fee_amount: 100,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to create payment');
+      }
+
+      const { error: initError } = await initPaymentSheet({
+        paymentIntentClientSecret: data.clientSecret,
+        merchantDisplayName: 'Roundtwo',
+      });
+
+      if (initError) {
+        Alert.alert('Payment Sheet Init Error', initError.message);
+        return;
+      }
+
+      const result = await presentPaymentSheet({
+        paymentIntentClientSecret: data.clientSecret,
+      });
+
+      if (result.error) {
+        Alert.alert('Payment Failed', result.error.message);
+        return;
+      }
+
+      await addDoc(collection(db, 'purchases'), {
+        product: selectedProduct.title,
+        price: parseFloat(selectedProduct.fullPrice),
+        buyer: user.email,
+        seller: selectedProduct.sellerId,
+        createdAt: new Date(),
+      });
+
+      setPurchaseBanner(`${user.displayName || user.email} purchased ${selectedProduct.title}`);
+      setShowConfetti(true);
+      Alert.alert('✅ Success', 'Purchase complete!');
+
+      setTimeout(() => setPurchaseBanner(null), 4000);
+    } catch (error) {
+      console.error('🔥 handleBuy error:', error);
+      Alert.alert('Error', error.message || 'Something went wrong');
+    }
   };
 
   return (
@@ -168,7 +244,6 @@ export default function ViewerScreen() {
         <Text style={styles.infoText}>Waiting for stream to start...</Text>
       )}
 
-      {/* Chat Overlays */}
       <View style={styles.chatOverlay}>
         <FlatList
           data={messages}
@@ -182,7 +257,6 @@ export default function ViewerScreen() {
         />
       </View>
 
-      {/* Message Input */}
       <View style={styles.chatInputWrapper}>
         <TextInput
           value={chatInput}
@@ -196,7 +270,6 @@ export default function ViewerScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Product Display + Buy */}
       {selectedProduct && (
         <View style={styles.productPanel}>
           <Image
@@ -206,8 +279,8 @@ export default function ViewerScreen() {
           <View style={styles.productDetails}>
             <Text style={styles.productTitle}>{selectedProduct.title}</Text>
             <Text style={styles.productPrice}>
-  ${Number(selectedProduct.fullPrice || 0).toFixed(2)}
-</Text>
+              ${Number(selectedProduct.fullPrice || 0).toFixed(2)}
+            </Text>
             <Text style={styles.productMeta}>
               {selectedProduct.groupAmount} in stock
             </Text>
@@ -215,6 +288,16 @@ export default function ViewerScreen() {
           <TouchableOpacity style={styles.buyButton} onPress={handleBuy}>
             <Text style={styles.buyText}>Buy →</Text>
           </TouchableOpacity>
+        </View>
+      )}
+
+      {showConfetti && (
+        <ConfettiCannon count={80} origin={{ x: Dimensions.get('window').width / 2, y: 0 }} fadeOut />
+      )}
+
+      {purchaseBanner && (
+        <View style={styles.purchaseBanner}>
+          <Text style={styles.purchaseBannerText}>{purchaseBanner}</Text>
         </View>
       )}
     </View>
@@ -304,6 +387,20 @@ const styles = StyleSheet.create({
   },
   buyText: {
     color: '#000',
+    fontWeight: 'bold',
+  },
+  purchaseBanner: {
+    position: 'absolute',
+    top: 40,
+    alignSelf: 'center',
+    backgroundColor: '#222',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+  },
+  purchaseBannerText: {
+    color: '#FFD700',
+    fontSize: 14,
     fontWeight: 'bold',
   },
 });

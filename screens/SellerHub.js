@@ -38,7 +38,7 @@ const SellerHub = () => {
           <TouchableOpacity style={styles.gridItem} onPress={() => navigation.navigate('Inventory')}>
             <Text style={styles.gridText}>Inventory</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.gridItem}>
+          <TouchableOpacity style={styles.gridItem} onPress={() => navigation.navigate('PayoutScreen')}>
             <Text style={styles.gridText}>Payouts</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.gridItem}>

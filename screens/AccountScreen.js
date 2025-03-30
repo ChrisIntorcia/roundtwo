@@ -14,7 +14,7 @@ const AccountScreen = () => {
   const { isSeller } = useContext(AppContext);
   const auth = getAuth();
   const [activeTab, setActiveTab] = useState("account");
-  const [username, setUsername] = useState("User"); // Default if username is missing
+  const [username, setUsername] = useState("User");
 
   useEffect(() => {
     if (route.params?.screen === "SellerHub") {
@@ -62,13 +62,17 @@ const AccountScreen = () => {
           style={[styles.tab, activeTab === "sellerHub" && styles.activeTab]}
           onPress={() => setActiveTab("sellerHub")}
         >
-          <Text style={[styles.tabText, activeTab === "sellerHub" && styles.activeTabText]}>Seller Hub</Text>
+          <Text style={[styles.tabText, activeTab === "sellerHub" && styles.activeTabText]}>
+            Seller Hub
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === "account" && styles.activeTab]}
           onPress={() => setActiveTab("account")}
         >
-          <Text style={[styles.tabText, activeTab === "account" && styles.activeTabText]}>Account</Text>
+          <Text style={[styles.tabText, activeTab === "account" && styles.activeTabText]}>
+            Account
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -88,10 +92,16 @@ const AccountScreen = () => {
             <TouchableOpacity style={styles.option}>
               <Text style={styles.optionText}>Affiliate Program: Earn Cash</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.option}>
+            <TouchableOpacity
+              style={styles.option}
+              onPress={() => navigation.navigate("PaymentsShipping")}
+            >
               <Text style={styles.optionText}>Payments & Shipping</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.option}>
+            <TouchableOpacity
+              style={styles.option}
+              onPress={() => navigation.navigate("AddressesScreen")}
+            >
               <Text style={styles.optionText}>Addresses</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.option}>
@@ -100,10 +110,16 @@ const AccountScreen = () => {
             <TouchableOpacity style={styles.option}>
               <Text style={styles.optionText}>Notifications</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.option}>
+            <TouchableOpacity
+              style={styles.option}
+              onPress={() => navigation.navigate("ChangeEmail")}
+            >
               <Text style={styles.optionText}>Change Email</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.option}>
+            <TouchableOpacity
+              style={styles.option}
+              onPress={() => navigation.navigate("ChangePassword")}
+            >
               <Text style={styles.optionText}>Change Password</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.option, styles.logout]} onPress={handleLogout}>

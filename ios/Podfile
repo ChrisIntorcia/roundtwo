@@ -17,7 +17,7 @@ target 'roundtwo' do
   use_expo_modules!
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
-    config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"];
+    config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"]
   else
     config_command = [
       'node',
@@ -33,8 +33,9 @@ target 'roundtwo' do
 
   config = use_native_modules!(config_command)
 
-  use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
-  use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
+  # ✅ Add these lines for module support
+  use_frameworks! :linkage => :static
+  use_modular_headers!
 
   use_react_native!(
     :path => config[:reactNativePath],
