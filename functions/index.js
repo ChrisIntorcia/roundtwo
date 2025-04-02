@@ -298,4 +298,41 @@ exports.createPaymentIntent = onRequest({
     }
   });
 });
+// ✅ Generate Agora Token
+const AGORA_APP_CERTIFICATE = defineSecret("AGORA_APP_CERTIFICATE");
 
+exports.generateAgoraToken = onRequest({
+  secrets: [AGORA_APP_CERTIFICATE],
+}, async (req, res) => {
+  try {
+    const { channelName, uid } = req.body;
+
+    if (!channelName || uid === undefined) {
+      return res.status(400).json({ error: "Missing channelName or uid" });
+    }
+
+    const APP_ID = "262ef45d2c514a5ebb129a836c4bff93";
+    const APP_CERTIFICATE = AGORA_APP_CERTIFICATE.value(); // ✅ corrected here
+
+    const expirationTimeInSeconds = 3600;
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+
+    const { RtcTokenBuilder, RtcRole } = require("agora-access-token");
+    console.log(`🧪 UID received: ${uid}, type: ${typeof uid}`);
+
+    const token = RtcTokenBuilder.buildTokenWithUid(
+      APP_ID,
+      APP_CERTIFICATE,
+      channelName,
+      parseInt(uid), // make sure uid is an integer
+      RtcRole.PUBLISHER,
+      privilegeExpiredTs
+    );
+
+    res.status(200).json({ token });
+  } catch (error) {
+    console.error("❌ generateAgoraToken error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});

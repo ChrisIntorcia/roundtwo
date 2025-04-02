@@ -1,3 +1,6 @@
+// 🔒 This GoLiveScreen preserves the locked foundation (dynamic UID, token-based auth, broadcaster role)
+// ✅ Adds: Thumbnail upload, Stripe check, product carousel, real-time chat overlay, selected product display
+
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
@@ -12,33 +15,22 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getFirestore, doc, setDoc, serverTimestamp, collection, query, where, getDocs, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { useNavigation } from '@react-navigation/native';
 import {
   createAgoraRtcEngine,
   ChannelProfileType,
   ClientRoleType,
   RtcSurfaceView,
+  VideoSourceType,
 } from 'react-native-agora';
-import {
-  doc,
-  setDoc,
-  serverTimestamp,
-  collection,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  onSnapshot,
-  getDoc,
-} from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
-import { useNavigation } from '@react-navigation/native';
-import { db } from '../firebaseConfig';
 
 const APP_ID = '262ef45d2c514a5ebb129a836c4bff93';
+const TOKEN_SERVER_URL = 'https://us-central1-roundtwo-cc793.cloudfunctions.net/generateAgoraToken';
 
 export default function GoLiveScreen() {
   const [joined, setJoined] = useState(false);
-  const [engineReady, setEngineReady] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [products, setProducts] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -48,43 +40,10 @@ export default function GoLiveScreen() {
   const auth = getAuth();
   const user = auth.currentUser;
   const navigation = useNavigation();
-  const channelName = user?.uid || 'livestream';
+  const db = getFirestore();
+  const channelName = user.uid;
 
   useEffect(() => {
-    const init = async () => {
-      if (Platform.OS === 'android') {
-        await PermissionsAndroid.requestMultiple([
-          PermissionsAndroid.PERMISSIONS.CAMERA,
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-        ]);
-      }
-
-      const engine = createAgoraRtcEngine();
-      rtcEngineRef.current = engine;
-
-      engine.initialize({
-        appId: APP_ID,
-        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
-      });
-
-      engine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
-      engine.enableVideo();
-      engine.startPreview();
-
-      engine.registerEventHandler({
-        onJoinChannelSuccess: (connection, uid) => {
-          console.log('✅ Joined channel', connection.channelId, uid);
-          setJoined(true);
-        },
-        onError: (err) => {
-          console.log('❌ Agora error:', err);
-        },
-      });
-
-      setEngineReady(true);
-    };
-
-    init();
     fetchProducts();
 
     const unsubMessages = onSnapshot(
@@ -96,36 +55,18 @@ export default function GoLiveScreen() {
     );
 
     return () => {
-      if (rtcEngineRef.current) {
-        rtcEngineRef.current.leaveChannel();
-        rtcEngineRef.current.release();
-        rtcEngineRef.current = null;
-      }
-
+      rtcEngineRef.current?.leaveChannel();
+      rtcEngineRef.current?.release();
+      updateDoc(doc(db, 'livestreams', channelName), { isLive: false });
       unsubMessages();
-
-      if (user) {
-        updateDoc(doc(db, 'livestreams', user.uid), {
-          isLive: false,
-        });
-      }
     };
   }, []);
 
   const fetchProducts = async () => {
-    if (!user) return;
     const q = query(collection(db, 'products'), where('sellerId', '==', user.uid));
-    const querySnapshot = await getDocs(q);
-    const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const snapshot = await getDocs(q);
+    const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     setProducts(items);
-  };
-
-  const updateSelectedProduct = async (product) => {
-    if (!user) return;
-    await setDoc(doc(db, 'livestreams', user.uid), {
-      selectedProduct: product,
-    }, { merge: true });
-    setSelectedProduct(product);
   };
 
   const pickThumbnail = async () => {
@@ -134,111 +75,96 @@ export default function GoLiveScreen() {
       allowsEditing: true,
       quality: 1,
     });
-
     if (!result.canceled && result.assets?.[0]?.uri) {
       setThumbnailLocalUri(result.assets[0].uri);
     }
   };
 
-  const uploadThumbnailToFirebase = async () => {
-    if (!user) {
-      throw new Error("User not authenticated for uploading thumbnail.");
-    }
-  
-    try {
-      console.log("📷 Starting upload for user:", user.uid);
-      const response = await fetch(thumbnailLocalUri);
-      const blob = await response.blob();
-  
-      const filename = `thumbnails/${user.uid}_${Date.now()}.jpg`;
-      const storageRef = ref(getStorage(), filename);
-  
-      await uploadBytes(storageRef, blob);
-      const downloadUrl = await getDownloadURL(storageRef);
-      console.log("✅ Upload successful:", downloadUrl);
-      return downloadUrl;
-    } catch (error) {
-      console.error("🔥 Firebase Storage Upload Error:", JSON.stringify(error, null, 2));
-      throw error;
-    }
+  const uploadThumbnail = async () => {
+    const response = await fetch(thumbnailLocalUri);
+    const blob = await response.blob();
+    const storageRef = ref(getStorage(), `thumbnails/${user.uid}_${Date.now()}.jpg`);
+    await uploadBytes(storageRef, blob);
+    return await getDownloadURL(storageRef);
+  };
+
+  const updateSelectedProduct = async (product) => {
+    await setDoc(doc(db, 'livestreams', user.uid), { selectedProduct: product }, { merge: true });
+    setSelectedProduct(product);
   };
 
   const startLiveStream = async () => {
-    if (!engineReady || !rtcEngineRef.current || !user) return;
-
     if (!thumbnailLocalUri) {
       Alert.alert('Missing Thumbnail', 'Please upload a livestream thumbnail before going live.');
       return;
     }
 
-    try {
-      const userRef = doc(db, 'users', user.uid);
-      const docSnapshot = await getDoc(userRef);
-
-      const stripeAccountId = docSnapshot.data()?.stripeAccountId;
-      if (!docSnapshot.exists() || !stripeAccountId) {
-        Alert.alert(
-          'Complete Bank Info',
-          'You need to set up your bank account before going live.',
-          [
-            { text: 'Go to Payouts', onPress: () => navigation.navigate('PayoutScreen') },
-            { text: 'Cancel', style: 'cancel' },
-          ]
-        );
-        return;
-      }
-
-      const verifyRes = await fetch('https://us-central1-roundtwo-cc793.cloudfunctions.net/verifyStripeStatus', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stripeAccountId }),
-      });
-
-      const verifyData = await verifyRes.json();
-      if (!verifyRes.ok || verifyData?.error) {
-        Alert.alert(
-          'Stripe Not Ready',
-          'Your Stripe account is not fully enabled for payouts and charges.'
-        );
-        return;
-      }
-
-      const thumbnailUrl = await uploadThumbnailToFirebase();
-
-      await setDoc(
-        doc(db, 'livestreams', user.uid),
-        {
-          streamer: user.displayName || 'Streamer',
-          channel: user.uid,
-          thumbnailUrl,
-          viewers: 0,
-          isLive: true,
-          createdAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-
-      rtcEngineRef.current.joinChannel('', channelName, 0, {});
-    } catch (err) {
-      console.error('🔥 Error uploading thumbnail or verifying Stripe:', JSON.stringify(err, null, 2));
-      Alert.alert('Error', err.message || 'Something went wrong. Please try again.');
+    const userRef = doc(db, 'users', user.uid);
+    const docSnapshot = await getDoc(userRef);
+    const stripeAccountId = docSnapshot.data()?.stripeAccountId;
+    if (!docSnapshot.exists() || !stripeAccountId) {
+      Alert.alert('Complete Bank Info', 'You need to set up your bank account before going live.', [
+        { text: 'Go to Payouts', onPress: () => navigation.navigate('PayoutScreen') },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+      return;
     }
-  };
 
-  const renderProductItem = ({ item }) => (
-    <TouchableOpacity
-      style={[
-        styles.productCard,
-        item.id === selectedProduct?.id && { borderColor: 'blue', borderWidth: 2 },
-      ]}
-      onPress={() => updateSelectedProduct(item)}
-    >
-      <Image source={{ uri: item.images?.[0] }} style={styles.productImage} />
-      <Text style={styles.productTitle}>{item.title}</Text>
-      <Text style={styles.productPrice}>${item.fullPrice}</Text>
-      <Text style={styles.productQty}>Qty: {item.groupAmount}</Text>
-    </TouchableOpacity>
-  );
+    const verifyRes = await fetch('https://us-central1-roundtwo-cc793.cloudfunctions.net/verifyStripeStatus', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stripeAccountId }),
+    });
+    const verifyData = await verifyRes.json();
+    if (!verifyRes.ok || verifyData?.error) {
+      Alert.alert('Stripe Not Ready', 'Your Stripe account is not fully enabled for payouts and charges.');
+      return;
+    }
+
+    const uid = Math.floor(Math.random() * 1000000);
+    const tokenRes = await fetch(TOKEN_SERVER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channelName, uid }),
+    });
+    const { token } = await tokenRes.json();
+
+    if (Platform.OS === 'android') {
+      await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.CAMERA,
+        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+      ]);
+    }
+
+    const engine = createAgoraRtcEngine();
+    rtcEngineRef.current = engine;
+    engine.initialize({ appId: APP_ID, channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting });
+    engine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+    engine.enableVideo();
+    engine.startPreview();
+    engine.setupLocalVideo({ uid: 0, sourceType: VideoSourceType.VideoSourceCamera });
+
+    await setDoc(doc(db, 'livestreams', user.uid), {
+      streamer: user.displayName || 'Streamer',
+      channel: channelName,
+      broadcasterUid: uid,
+      thumbnailUrl: await uploadThumbnail(),
+      viewers: 0,
+      isLive: true,
+      createdAt: serverTimestamp(),
+    });
+
+    engine.joinChannel(token, channelName, uid, {
+      channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+      clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+      publishMicrophoneTrack: true,
+      publishCameraTrack: true,
+      autoSubscribeAudio: true,
+      autoSubscribeVideo: true,
+    });
+
+    setJoined(true);
+  };
 
   return (
     <View style={styles.container}>
@@ -261,7 +187,7 @@ export default function GoLiveScreen() {
         </>
       ) : (
         <>
-          <RtcSurfaceView style={styles.video} canvas={{ uid: 0, renderMode: 1 }} />
+          <RtcSurfaceView style={styles.video} canvas={{ uid: 0, sourceType: VideoSourceType.VideoSourceCamera }} />
 
           <FlatList
             data={messages}
@@ -276,7 +202,17 @@ export default function GoLiveScreen() {
             data={products}
             keyExtractor={(item) => item.id}
             horizontal
-            renderItem={renderProductItem}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[styles.productCard, item.id === selectedProduct?.id && { borderColor: 'blue', borderWidth: 2 }]}
+                onPress={() => updateSelectedProduct(item)}
+              >
+                <Image source={{ uri: item.images?.[0] }} style={styles.productImage} />
+                <Text style={styles.productTitle}>{item.title}</Text>
+                <Text style={styles.productPrice}>${item.fullPrice}</Text>
+                <Text style={styles.productQty}>Qty: {item.groupAmount}</Text>
+              </TouchableOpacity>
+            )}
             style={styles.carousel}
           />
 
@@ -311,10 +247,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     borderRadius: 12,
   },
-  thumbnailText: {
-    color: '#333',
-    fontWeight: '600',
-  },
+  thumbnailText: { color: '#333', fontWeight: '600' },
   chatOverlay: {
     position: 'absolute',
     top: 60,
@@ -350,11 +283,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 6,
   },
-  productTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
+  productTitle: { fontSize: 12, fontWeight: 'bold', textAlign: 'center' },
   productPrice: { fontSize: 12, color: '#555' },
   productQty: { fontSize: 12, color: '#999' },
   selectedProduct: {

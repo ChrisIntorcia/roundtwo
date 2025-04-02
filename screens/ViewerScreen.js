@@ -1,14 +1,18 @@
+// 🔒 This ViewerScreen preserves the locked foundation (dynamic UID, token-based auth, viewer role)
+// ✅ Adds: Real-time chat overlay, chat input, product display, Stripe checkout, confetti, purchase logging
+
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
+  ActivityIndicator,
   Platform,
   PermissionsAndroid,
-  Image,
   TextInput,
   FlatList,
   TouchableOpacity,
+  Image,
   Alert,
   Dimensions,
 } from 'react-native';
@@ -18,30 +22,20 @@ import {
   ChannelProfileType,
   ClientRoleType,
   RtcSurfaceView,
+  VideoSourceType,
 } from 'react-native-agora';
-import { useRoute } from '@react-navigation/native';
-import {
-  doc,
-  onSnapshot,
-  collection,
-  addDoc,
-  query,
-  orderBy,
-  getDoc,
-} from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import { doc, getDoc, getFirestore, onSnapshot, collection, query, orderBy, addDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-import { initStripe, presentPaymentSheet, initPaymentSheet } from '@stripe/stripe-react-native';
+import { initStripe, presentPaymentSheet } from '@stripe/stripe-react-native';
 
 const APP_ID = '262ef45d2c514a5ebb129a836c4bff93';
+const TOKEN_SERVER_URL = 'https://us-central1-roundtwo-cc793.cloudfunctions.net/generateAgoraToken';
 
-export default function ViewerScreen() {
-  const route = useRoute();
-  const { channel } = route.params || {};
-
-  const [joined, setJoined] = useState(false);
-  const [engineReady, setEngineReady] = useState(false);
+export default function ViewerScreen({ route }) {
+  const { channel } = route.params;
   const [remoteUid, setRemoteUid] = useState(null);
+  const [joined, setJoined] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
@@ -49,16 +43,29 @@ export default function ViewerScreen() {
   const [purchaseBanner, setPurchaseBanner] = useState(null);
 
   const rtcEngineRef = useRef(null);
+  const db = getFirestore();
+  const auth = getAuth();
 
   useEffect(() => {
-    initStripe({
-      publishableKey: 'pk_test_51LLWUzBDUXSD1c3FLs6vIFKT9eyd0O3ex9yA13jcaDhUJFcabm5VZkPZfCc7rikCWyTeVjZlM7dHXm10IlhoQBKG00g4SsRQfr',
-    });
+    initStripe({ publishableKey: 'pk_test_51LLWUzBDUXSD1c3FLs6vIFKT9eyd0O3ex9yA13jcaDhUJFcabm5VZkPZfCc7rikCWyTeVjZlM7dHXm10IlhoQBKG00g4SsRQfr' });
   }, []);
 
   useEffect(() => {
-    const init = async () => {
+    const startViewing = async () => {
       try {
+        const streamDoc = await getDoc(doc(db, 'livestreams', channel));
+        if (!streamDoc.exists()) return;
+
+        const broadcasterUid = streamDoc.data()?.broadcasterUid;
+        const viewerUid = Math.floor(Math.random() * 1000000);
+
+        const tokenRes = await fetch(TOKEN_SERVER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channelName: channel, uid: viewerUid }),
+        });
+        const { token } = await tokenRes.json();
+
         if (Platform.OS === 'android') {
           await PermissionsAndroid.requestMultiple([
             PermissionsAndroid.PERMISSIONS.CAMERA,
@@ -78,106 +85,78 @@ export default function ViewerScreen() {
         engine.enableVideo();
 
         engine.registerEventHandler({
-          onJoinChannelSuccess: (connection, uid, elapsed) => {
-            setJoined(true);
-          },
-          onUserJoined: (connection, uid) => {
-            setRemoteUid(uid);
-          },
-          onError: (err) => {
-            console.log('❌ Agora error:', err);
-          },
+          onJoinChannelSuccess: () => setJoined(true),
+          onUserJoined: (connection, uid) => setRemoteUid(uid),
+          onUserOffline: () => setRemoteUid(null),
+          onError: (err) => console.log('🚨 Agora Error:', err),
         });
 
-        setEngineReady(true);
+        engine.joinChannel(token, channel, viewerUid, {
+          channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+          clientRoleType: ClientRoleType.ClientRoleAudience,
+          publishCameraTrack: false,
+          publishMicrophoneTrack: false,
+          autoSubscribeAudio: true,
+          autoSubscribeVideo: true,
+        });
+
+        setLoading(false);
       } catch (err) {
-        console.error('Error initializing Agora:', err);
+        console.error('🔥 Error joining channel:', err);
       }
     };
 
-    init();
+    startViewing();
 
     return () => {
-      if (rtcEngineRef.current) {
-        rtcEngineRef.current.leaveChannel();
-        rtcEngineRef.current.release();
-        rtcEngineRef.current = null;
-      }
+      rtcEngineRef.current?.leaveChannel();
+      rtcEngineRef.current?.release();
     };
   }, []);
 
   useEffect(() => {
-    if (engineReady && rtcEngineRef.current) {
-      rtcEngineRef.current.joinChannel('', channel || 'livestream', 0, {});
-    }
-  }, [engineReady]);
-
-  useEffect(() => {
-    if (!channel) return;
-
-    const streamRef = doc(db, 'livestreams', channel);
-    const unsubscribe = onSnapshot(streamRef, (docSnap) => {
+    const unsubProduct = onSnapshot(doc(db, 'livestreams', channel), (docSnap) => {
       if (docSnap.exists()) {
-        const data = docSnap.data();
-        setSelectedProduct(data.selectedProduct || null);
+        setSelectedProduct(docSnap.data().selectedProduct || null);
       }
     });
 
-    return () => unsubscribe();
-  }, [channel]);
-
-  useEffect(() => {
-    if (!channel) return;
-    const chatRef = collection(db, 'livestreams', channel, 'chat');
-    const q = query(chatRef, orderBy('createdAt'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+    const chatQuery = query(
+      collection(db, 'livestreams', channel, 'messages'),
+      orderBy('createdAt')
+    );
+    const unsubChat = onSnapshot(chatQuery, (snapshot) => {
+      const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setMessages(msgs);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubProduct();
+      unsubChat();
+    };
   }, [channel]);
 
   const sendMessage = async () => {
-    const auth = getAuth();
     const user = auth.currentUser;
     if (!chatInput.trim() || !user) return;
-    const chatRef = collection(db, 'livestreams', channel, 'chat');
-    await addDoc(chatRef, {
+    await addDoc(collection(db, 'livestreams', channel, 'messages'), {
       text: chatInput,
+      sender: user.displayName || 'Viewer',
       createdAt: new Date(),
-      userName: user.displayName || 'Viewer',
     });
     setChatInput('');
   };
 
   const handleBuy = async () => {
-    const auth = getAuth();
     const user = auth.currentUser;
-  
-    if (!user) {
-      Alert.alert('Login Required', 'Please log in to purchase.');
-      return;
-    }
-  
-    if (!selectedProduct) {
-      Alert.alert('Product Error', 'No product selected.');
-      return;
-    }
-  
+    if (!user || !selectedProduct) return;
+
     try {
       const sellerRef = doc(db, 'users', selectedProduct.sellerId);
       const sellerSnap = await getDoc(sellerRef);
       const stripeAccountId = sellerSnap.data()?.stripeAccountId;
-  
-      if (!stripeAccountId) {
-        Alert.alert('Seller Error', 'Seller is not set up to receive payments.');
-        return;
-      }
-  
+      if (!stripeAccountId) return Alert.alert('Seller Error', 'Seller is not set up to receive payments.');
+
       const res = await fetch('https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentIntent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -188,14 +167,9 @@ export default function ViewerScreen() {
           application_fee_amount: 100,
         }),
       });
-  
       const data = await res.json();
-  
-      if (!res.ok) {
-        throw new Error(data.error || 'Payment failed.');
-      }
-  
-      // Log purchase to Firestore
+      if (!res.ok) throw new Error(data.error || 'Payment failed.');
+
       await addDoc(collection(db, 'purchases'), {
         product: selectedProduct.title,
         price: parseFloat(selectedProduct.fullPrice),
@@ -203,24 +177,25 @@ export default function ViewerScreen() {
         seller: selectedProduct.sellerId,
         createdAt: new Date(),
       });
-  
+
       setPurchaseBanner(`${user.displayName || user.email} purchased ${selectedProduct.title}`);
       setShowConfetti(true);
-      Alert.alert('✅ Success', 'Purchase complete!');
       setTimeout(() => setPurchaseBanner(null), 4000);
+      Alert.alert('✅ Success', 'Purchase complete!');
     } catch (error) {
       console.error('🔥 handleBuy error:', error);
       Alert.alert('Error', error.message || 'Something went wrong');
     }
   };
-  
+
+  if (loading) return <ActivityIndicator style={{ flex: 1 }} />;
 
   return (
     <View style={styles.container}>
-      {joined && remoteUid !== null ? (
+      {joined && remoteUid ? (
         <RtcSurfaceView
           style={styles.video}
-          canvas={{ uid: remoteUid, renderMode: 1 }}
+          canvas={{ uid: remoteUid, sourceType: VideoSourceType.VideoSourceRemote }}
         />
       ) : (
         <Text style={styles.infoText}>Waiting for stream to start...</Text>
@@ -232,7 +207,7 @@ export default function ViewerScreen() {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <Text style={styles.chatMessage}>
-              <Text style={{ fontWeight: 'bold' }}>{item.userName}: </Text>
+              <Text style={{ fontWeight: 'bold' }}>{item.sender}: </Text>
               {item.text}
             </Text>
           )}
@@ -254,18 +229,11 @@ export default function ViewerScreen() {
 
       {selectedProduct && (
         <View style={styles.productPanel}>
-          <Image
-            source={{ uri: selectedProduct.images?.[0] }}
-            style={styles.productImage}
-          />
+          <Image source={{ uri: selectedProduct.images?.[0] }} style={styles.productImage} />
           <View style={styles.productDetails}>
             <Text style={styles.productTitle}>{selectedProduct.title}</Text>
-            <Text style={styles.productPrice}>
-              ${Number(selectedProduct.fullPrice || 0).toFixed(2)}
-            </Text>
-            <Text style={styles.productMeta}>
-              {selectedProduct.groupAmount} in stock
-            </Text>
+            <Text style={styles.productPrice}>${Number(selectedProduct.fullPrice || 0).toFixed(2)}</Text>
+            <Text style={styles.productMeta}>{selectedProduct.groupAmount} in stock</Text>
           </View>
           <TouchableOpacity style={styles.buyButton} onPress={handleBuy}>
             <Text style={styles.buyText}>Buy →</Text>

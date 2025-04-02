@@ -8,7 +8,9 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "roundtwo",
-    "deepLinks": ["roundtwo://"],
+    "deepLinks": [
+      "roundtwo://"
+    ],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -16,7 +18,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.chrisintorcia.roundtwo"
+      "bundleIdentifier": "com.chrisintorcia.roundtwo",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow this app to access your camera",
+        "NSMicrophoneUsageDescription": "Allow this app to access your microphone"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -37,6 +43,11 @@
           "appId": "1:402284856773:web:a58476112c41be95b0b7ac",
           "measurementId": "G-HT3MMGH8HL"
         }
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "34bce288-d064-41c4-aa79-25891d1be285"
       }
     }
   }

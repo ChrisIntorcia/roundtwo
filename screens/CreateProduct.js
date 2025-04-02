@@ -30,6 +30,7 @@ const CreateProduct = () => {
   const [groupAmount, setGroupAmount] = useState(''); // ✅ Group Amount
   const [groupDescription, setGroupDescription] = useState(''); // ✅ Description for Each Group
   const [photos, setPhotos] = useState([]);
+  const [quantity, setQuantity] = useState('');
   const scrollViewRef = useRef(null);
 
   const handleAddMedia = async () => {
@@ -48,7 +49,7 @@ const CreateProduct = () => {
   };
 
   const handlePublish = async () => {
-    if (!title || !description || !fullPrice || !groupPrice || !groupAmount || !groupDescription || photos.length === 0) {
+    if (!title || !description || !fullPrice || !quantity || !groupPrice || !groupAmount || !groupDescription || photos.length === 0) {
       return Alert.alert('Incomplete Fields', 'Please complete all required fields and add at least one photo.');
     }
   
@@ -74,6 +75,7 @@ const CreateProduct = () => {
         title,
         description,
         fullPrice,
+        quantity,
         groupPrice,
         groupAmount,
         groupDescription,
@@ -129,6 +131,15 @@ const CreateProduct = () => {
             placeholder="Enter Full Price"
             value={fullPrice}
             onChangeText={setFullPrice}
+            keyboardType="numeric"
+          />
+
+          <Text style={styles.inputLabel}>Quantity *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter available quantity"
+            value={quantity}
+            onChangeText={setQuantity}
             keyboardType="numeric"
           />
 
