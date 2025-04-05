@@ -71,7 +71,7 @@ const SellerHub = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: "#fff",
   },
   profileHeader: {
     padding: 20,
@@ -81,23 +81,23 @@ const styles = StyleSheet.create({
   },
   username: {
     fontSize: 18,
-    color: "white",
+    color: "#000",
   },
   profileButton: {
-    backgroundColor: "#2A2A2A",
+    backgroundColor: "#eee",
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
   },
   profileButtonText: {
-    color: "white",
+    color: "#000",
     fontSize: 14,
   },
   tabs: {
     flexDirection: "row",
     justifyContent: "space-around",
     borderBottomWidth: 1,
-    borderBottomColor: "#333",
+    borderBottomColor: "#ddd",
   },
   tab: {
     paddingVertical: 12,
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#FFF",
   },
   activeTabText: {
-    color: "white",
+    color: "#000",
     fontWeight: "bold",
   },
   content: {
@@ -123,24 +123,24 @@ const styles = StyleSheet.create({
   gridItem: {
     width: "48%",
     height: 80,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: "#f5f5f5",
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 10,
     marginBottom: 10,
   },
   gridText: {
-    color: "white",
+    color: "#000",
     fontSize: 16,
     fontWeight: "bold",
   },
   option: {
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#333",
+    borderBottomColor: "#ddd",
   },
   optionText: {
-    color: "white",
+    color: "#000",
     fontSize: 16,
   },
   lastOption: {

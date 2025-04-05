@@ -20,10 +20,12 @@ import SellerHub from "./SellerHub";
 import { getAuth } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
+import { useNavigation } from "@react-navigation/native"; // ✅ root nav access
 
 const Tab = createBottomTabNavigator();
 
 const BottomTabs = ({ navigation }) => {
+  const rootNavigation = useNavigation(); // ✅ root stack navigation
   const { isSeller } = useContext(AppContext);
   const [isSellerModalVisible, setSellerModalVisible] = useState(false);
   const [isBuyerModalVisible, setBuyerModalVisible] = useState(false);
@@ -40,9 +42,9 @@ const BottomTabs = ({ navigation }) => {
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-          setSellerSetupComplete(true); // ✅ seller has filled out details
+          setSellerSetupComplete(true);
         } else {
-          setSellerSetupComplete(false); // ❌ show "Complete Seller Setup"
+          setSellerSetupComplete(false);
         }
       } catch (err) {
         console.log("Error checking seller details:", err);
@@ -84,28 +86,27 @@ const BottomTabs = ({ navigation }) => {
   return (
     <View style={{ flex: 1 }}>
       <Tab.Navigator
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName;
-            if (route.name === "Home") {
-              iconName = focused ? "home" : "home-outline";
-            } else if (route.name === "Browse") {
-              iconName = focused ? "search" : "search-outline";
-            } else if (route.name === "Activity") {
-              iconName = focused ? "list" : "list-outline";
-            } else if (route.name === "Account") {
-              iconName = focused ? "person" : "person-outline";
-            }
-            return <Ionicons name={iconName} size={size} color={color} />;
-          },
-          tabBarActiveTintColor: "tomato",
-          tabBarInactiveTintColor: "gray",
-        })}
+  screenOptions={({ route }) => ({
+    headerShown: false, // ✅ hides all headers
+    tabBarIcon: ({ focused, color, size }) => {
+      let iconName;
+      if (route.name === "Home") {
+        iconName = focused ? "home" : "home-outline";
+      } else if (route.name === "Browse") {
+        iconName = focused ? "search" : "search-outline";
+      } else if (route.name === "Activity") {
+        iconName = focused ? "list" : "list-outline";
+      } else if (route.name === "Account") {
+        iconName = focused ? "person" : "person-outline";
+      }
+      return <Ionicons name={iconName} size={size} color={color} />;
+    },
+    tabBarActiveTintColor: "tomato",
+    tabBarInactiveTintColor: "gray",
+  })}
       >
         <Tab.Screen name="Home" component={HomeScreen} />
         <Tab.Screen name="Browse" component={BrowseScreen} />
-
-        {/* ✅ Only show Sell button if seller details NOT filled out */}
         {!sellerSetupComplete && (
           <Tab.Screen
             name="Sell"
@@ -121,12 +122,11 @@ const BottomTabs = ({ navigation }) => {
             {() => null}
           </Tab.Screen>
         )}
-
         <Tab.Screen name="Activity" component={ActivityScreen} />
         <Tab.Screen name="Account" component={AccountScreen} />
       </Tab.Navigator>
 
-      {/* Buyer Modal: Seller Setup */}
+      {/* Buyer Modal */}
       <Modal animationType="slide" transparent visible={isBuyerModalVisible} onRequestClose={closeModals}>
         <View style={styles.modalOverlay} {...panResponder.panHandlers}>
           <Animated.View style={[styles.bottomSheet, { transform: [{ translateY }] }]}>
@@ -139,7 +139,7 @@ const BottomTabs = ({ navigation }) => {
                 style={styles.blueButton}
                 onPress={() => {
                   closeModals();
-                  navigation.navigate("SellerDetailsScreen");
+                  rootNavigation.navigate("SellerDetailsScreen"); // ✅ go to global screen
                 }}
               >
                 <Text style={styles.optionButtonText}>Continue</Text>
@@ -149,7 +149,7 @@ const BottomTabs = ({ navigation }) => {
         </View>
       </Modal>
 
-      {/* Seller Modal: Options */}
+      {/* Seller Modal */}
       <Modal animationType="slide" transparent visible={isSellerModalVisible} onRequestClose={closeModals}>
         <View style={styles.modalOverlay} {...panResponder.panHandlers}>
           <Animated.View style={[styles.bottomSheet, { transform: [{ translateY }] }]}>
@@ -159,7 +159,7 @@ const BottomTabs = ({ navigation }) => {
                 style={styles.blueButton}
                 onPress={() => {
                   closeModals();
-                  navigation.navigate("CreateProductScreen");
+                  rootNavigation.navigate("CreateProductScreen"); // ✅ go to stack-level screen
                 }}
               >
                 <Text style={styles.optionButtonText}>Create a Product</Text>
@@ -168,7 +168,7 @@ const BottomTabs = ({ navigation }) => {
                 style={styles.blueButton}
                 onPress={() => {
                   closeModals();
-                  navigation.navigate("GoLiveScreen");
+                  rootNavigation.navigate("GoLiveScreen"); // ✅ fixed navigation to hide header
                 }}
               >
                 <Text style={styles.optionButtonText}>Schedule a Show</Text>
@@ -177,7 +177,10 @@ const BottomTabs = ({ navigation }) => {
                 style={styles.blueButton}
                 onPress={() => {
                   closeModals();
-                  navigation.navigate("MainApp", { screen: "Account", params: { screen: "SellerHub" } });
+                  rootNavigation.navigate("MainApp", {
+                    screen: "Account",
+                    params: { screen: "SellerHub" },
+                  });
                 }}
               >
                 <Text style={styles.optionButtonText}>Seller Hub</Text>

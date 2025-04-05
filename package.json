@@ -24,6 +24,8 @@
     "base64-arraybuffer": "^1.0.2",
     "expo": "^52.0.41",
     "expo-auth-session": "~6.0.3",
+    "expo-av": "~15.0.2",
+    "expo-camera": "~16.0.18",
     "expo-dev-client": "~5.0.15",
     "expo-file-system": "~18.0.12",
     "expo-firebase-recaptcha": "^2.3.1",
@@ -44,6 +46,7 @@
     "react-native-google-places-autocomplete": "^2.5.7",
     "react-native-maps": "1.18.0",
     "react-native-modal": "^14.0.0-rc.0",
+    "react-native-modalize": "^2.1.1",
     "react-native-paper": "^5.13.1",
     "react-native-picker-select": "^9.3.1",
     "react-native-reanimated": "~3.16.1",
@@ -51,10 +54,9 @@
     "react-native-screens": "~4.4.0",
     "react-native-tab-view": "^4.0.5",
     "react-native-vector-icons": "^10.2.0",
-    "react-native-webview": "13.12.5",
-    "stripe": "^17.7.0",
-    "expo-camera": "~16.0.18",
-    "expo-av": "~15.0.2"
+    "react-native-webview": "^13.13.5",
+    "rn-swipe-button": "^3.0.1",
+    "stripe": "^17.7.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

@@ -1,5 +1,13 @@
 import React, { useContext, useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Platform,
+  StatusBar,
+} from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { getAuth, signOut } from "firebase/auth";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
@@ -45,6 +53,10 @@ const AccountScreen = () => {
 
   return (
     <View style={styles.container}>
+      {/* Top spacer for status bar */}
+      <View style={{ height: Platform.OS === "android" ? StatusBar.currentHeight : 50 }} />
+
+      {/* Profile header */}
       <View style={styles.profileHeader}>
         <TouchableOpacity onPress={() => navigation.navigate("ProfileScreen")}>
           <Text style={styles.username}>{username} ▼</Text>
@@ -58,14 +70,16 @@ const AccountScreen = () => {
       </View>
 
       <View style={styles.tabs}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "sellerHub" && styles.activeTab]}
-          onPress={() => setActiveTab("sellerHub")}
-        >
-          <Text style={[styles.tabText, activeTab === "sellerHub" && styles.activeTabText]}>
-            Seller Hub
-          </Text>
-        </TouchableOpacity>
+        {isSeller && (
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "sellerHub" && styles.activeTab]}
+            onPress={() => setActiveTab("sellerHub")}
+          >
+            <Text style={[styles.tabText, activeTab === "sellerHub" && styles.activeTabText]}>
+              Seller Hub
+            </Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           style={[styles.tab, activeTab === "account" && styles.activeTab]}
           onPress={() => setActiveTab("account")}
@@ -126,8 +140,20 @@ const AccountScreen = () => {
               <Text style={[styles.optionText, styles.logoutText]}>Logout</Text>
             </TouchableOpacity>
           </>
-        ) : (
+        ) : isSeller ? (
           <SellerHub />
+        ) : (
+          <View style={styles.notSellerContainer}>
+            <Text style={styles.notSellerText}>
+              Seller tools are only available once you complete seller registration.
+            </Text>
+            <TouchableOpacity
+              style={styles.becomeSellerButton}
+              onPress={() => navigation.navigate("SellerDetailsScreen")}
+            >
+              <Text style={styles.becomeSellerText}>Become a Seller</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </ScrollView>
     </View>
@@ -137,33 +163,35 @@ const AccountScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: "#fff",
   },
   profileHeader: {
-    padding: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    marginBottom: 0,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
   username: {
     fontSize: 18,
-    color: "white",
+    color: "#000",
   },
   profileButton: {
-    backgroundColor: "#2A2A2A",
+    backgroundColor: "#eee",
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
   },
   profileButtonText: {
-    color: "white",
+    color: "#000",
     fontSize: 14,
   },
   tabs: {
     flexDirection: "row",
     justifyContent: "space-around",
     borderBottomWidth: 1,
-    borderBottomColor: "#333",
+    borderBottomColor: "#ddd",
   },
   tab: {
     paddingVertical: 12,
@@ -175,41 +203,41 @@ const styles = StyleSheet.create({
     borderBottomColor: "#FFF",
   },
   tabText: {
-    color: "#888",
+    color: "#666",
     fontSize: 16,
   },
   activeTabText: {
-    color: "white",
+    color: "#000",
   },
   content: {
     padding: 20,
   },
   card: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: "#f5f5f5",
     padding: 15,
     borderRadius: 10,
     marginBottom: 10,
   },
   cardTitle: {
-    color: "white",
+    color: "#000",
     fontSize: 16,
     fontWeight: "bold",
   },
   cardBalance: {
-    color: "white",
+    color: "#000",
     marginTop: 5,
   },
   cardSubtitle: {
-    color: "#888",
+    color: "#666",
     marginTop: 5,
   },
   option: {
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#333",
+    borderBottomColor: "#ddd",
   },
   optionText: {
-    color: "white",
+    color: "#000",
     fontSize: 16,
   },
   logout: {
@@ -218,6 +246,27 @@ const styles = StyleSheet.create({
   logoutText: {
     color: "red",
     fontWeight: "bold",
+  },
+  notSellerContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  notSellerText: {
+    color: "#000",
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  becomeSellerButton: {
+    backgroundColor: "#FFD700",
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+  },
+  becomeSellerText: {
+    fontWeight: "bold",
+    fontSize: 16,
+    color: "#000",
   },
 });
 

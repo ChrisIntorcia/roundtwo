@@ -6,6 +6,7 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { getFirestore, collection, onSnapshot, doc, getDoc, setDoc } from "firebase/firestore";
 import { auth } from "../firebaseConfig"; // Ensure auth is correctly imported
+import CustomHeader from "../components/CustomHeader";
 
 const db = getFirestore();
 
@@ -77,7 +78,7 @@ const HomeScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Latest Products</Text>
+      <CustomHeader title="Latest Products" />
       <FlatList
         data={products}
         keyExtractor={(item) => item.id}
@@ -109,7 +110,6 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
     backgroundColor: "#f9f9f9",
   },
   header: {

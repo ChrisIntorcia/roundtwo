@@ -1,13 +1,23 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
 import { getAuth } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
+import CustomHeader from "../../components/CustomHeader";
+import { useNavigation } from "@react-navigation/native";
 
 const AddressesScreen = () => {
   const [address, setAddress] = useState(null);
   const [loading, setLoading] = useState(true);
   const auth = getAuth();
+  const navigation = useNavigation();
 
   useEffect(() => {
     const fetchAddress = async () => {
@@ -35,50 +45,95 @@ const AddressesScreen = () => {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
-
-  if (!address) {
-    return (
-      <View style={styles.center}>
-        <Text>No address saved.</Text>
+        <ActivityIndicator size="large" color="#FF6F61" />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Your Saved Shipping Address</Text>
-      <Text style={styles.field}>📍 {address.formatted}</Text>
-      <Text style={styles.field}>City: {address.city}</Text>
-      <Text style={styles.field}>State: {address.state}</Text>
-      <Text style={styles.field}>Zip: {address.zip}</Text>
-      <Text style={styles.field}>Country: {address.country}</Text>
+      <CustomHeader title="Shipping Address" showBack />
+
+      <ScrollView contentContainerStyle={styles.content}>
+        {!address ? (
+          <Text style={styles.emptyText}>No address saved.</Text>
+        ) : (
+          <View style={styles.card}>
+            <Text style={styles.name}>{address.name}</Text>
+            <Text style={styles.line}>{address.street || address.formatted}</Text>
+            <Text style={styles.line}>
+             {address.city}, {address.state} {address.zip}
+            </Text>
+            <Text style={styles.line}>{address.country}</Text>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => navigation.navigate("AddShippingAddress")}
+        >
+          <Text style={styles.buttonText}>
+            {address ? "Edit Address" : "Add Address"}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
-    backgroundColor: "#fff",
     flex: 1,
+    backgroundColor: "#fff",
   },
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 16,
+  content: {
+    padding: 20,
   },
-  field: {
+  card: {
+    backgroundColor: "#F5F5F5",
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  name: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 6,
+    color: "#222",
+  },
+  line: {
     fontSize: 15,
-    marginBottom: 8,
+    color: "#444",
+    marginBottom: 3,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginTop: 40,
+    marginBottom: 20,
+  },
+  button: {
+    backgroundColor: "#222",
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
   },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#fff",
   },
 });
 

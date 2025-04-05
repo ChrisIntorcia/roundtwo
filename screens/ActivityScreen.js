@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, FlatList } from "react-native";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "../firebaseConfig";
+import CustomHeader from "../components/CustomHeader";
 
 const ActivityScreen = () => {
   const [purchases, setPurchases] = useState([]);
@@ -17,10 +18,11 @@ const ActivityScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Recent Purchases</Text>
+      <CustomHeader title="Recent Activity" />
       <FlatList
         data={purchases}
         keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 20 }}
         renderItem={({ item }) => (
           <View style={styles.purchaseItem}>
             <Text style={styles.product}>{item.product}</Text>
@@ -35,7 +37,7 @@ const ActivityScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: "white" },
+  container: { flex: 1, backgroundColor: "white" },
   title: { fontSize: 20, fontWeight: "bold", marginBottom: 10 },
   purchaseItem: { marginBottom: 15 },
   product: { fontSize: 16, fontWeight: "bold" },

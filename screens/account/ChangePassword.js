@@ -13,6 +13,7 @@ import {
   reauthenticateWithCredential,
   updatePassword,
 } from "firebase/auth";
+import CustomHeader from "../../components/CustomHeader";
 
 const ChangePassword = () => {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -51,60 +52,66 @@ const ChangePassword = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Change Password</Text>
+      <CustomHeader showBack />
+      <View style={styles.content}>
+        <Text style={styles.title}>Change Password</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Current password"
-        placeholderTextColor="#aaa"
-        secureTextEntry
-        value={currentPassword}
-        onChangeText={setCurrentPassword}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Current password"
+          placeholderTextColor="#888"
+          secureTextEntry
+          value={currentPassword}
+          onChangeText={setCurrentPassword}
+        />
 
-      <TextInput
-        style={styles.input}
-        placeholder="New password"
-        placeholderTextColor="#aaa"
-        secureTextEntry
-        value={newPassword}
-        onChangeText={setNewPassword}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="New password"
+          placeholderTextColor="#888"
+          secureTextEntry
+          value={newPassword}
+          onChangeText={setNewPassword}
+        />
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={handleChangePassword}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>
-          {loading ? "Updating..." : "Update Password"}
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleChangePassword}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? "Updating..." : "Update Password"}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#121212",
+    backgroundColor: "#fff",
     flex: 1,
-    padding: 20,
+  },
+  content: {
+    flex: 1,
     justifyContent: "center",
+    paddingHorizontal: 20,
   },
   title: {
-    color: "white",
+    color: "#222",
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 30,
     textAlign: "center",
   },
   input: {
-    backgroundColor: "#1E1E1E",
-    color: "white",
+    backgroundColor: "#F1F1F1",
+    color: "#000",
     borderRadius: 8,
     padding: 14,
     marginBottom: 15,
-    borderColor: "#333",
+    borderColor: "#DDD",
     borderWidth: 1,
   },
   button: {
@@ -116,6 +123,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontWeight: "bold",
     fontSize: 16,
+    color: "#000",
   },
 });
 

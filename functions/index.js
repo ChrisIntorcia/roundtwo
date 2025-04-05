@@ -39,53 +39,53 @@ exports.createPaymentSheet = onRequest({
 }, async (req, res) => {
   cors(req, res, async () => {
     const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
-    const { amount, customerEmail, stripeAccountId } = req.body;
+    const { amount, customerEmail, stripeAccountId, stripeCustomerId } = req.body;
 
     if (!amount || !customerEmail) {
       return res.status(400).json({ error: "Missing amount or customerEmail" });
     }
 
     try {
-      const customer = stripeAccountId
-        ? await stripe.customers.create(
-            { email: customerEmail },
-            { stripeAccount: stripeAccountId }
-          )
-        : await stripe.customers.create({ email: customerEmail });
+      let customerId = stripeCustomerId;
 
-      const ephemeralKey = stripeAccountId
-        ? await stripe.ephemeralKeys.create(
-            { customer: customer.id },
-            { apiVersion: "2023-10-16", stripeAccount: stripeAccountId }
-          )
-        : await stripe.ephemeralKeys.create(
-            { customer: customer.id },
-            { apiVersion: "2023-10-16" }
-          );
+      // If no customer ID is passed, create one and save to Firestore
+      if (!customerId) {
+        const newCustomer = await stripe.customers.create({ email: customerEmail });
+        customerId = newCustomer.id;
 
-      const paymentIntent = stripeAccountId
-        ? await stripe.paymentIntents.create(
-            {
-              amount,
-              currency: "usd",
-              customer: customer.id,
-              automatic_payment_methods: { enabled: true },
-              application_fee_amount: Math.round(amount * 0.1),
-            },
-            { stripeAccount: stripeAccountId }
-          )
-        : await stripe.paymentIntents.create({
-            amount,
-            currency: "usd",
-            customer: customer.id,
-            automatic_payment_methods: { enabled: true },
-          });
+        // 🔐 Save the Stripe customer ID to Firestore for reuse
+        const userSnapshot = await db.collection("users").where("email", "==", customerEmail).get();
+        if (!userSnapshot.empty) {
+          const userDoc = userSnapshot.docs[0];
+          await userDoc.ref.set({ stripeCustomerId: customerId }, { merge: true });
+        }
+      }
+
+      const ephemeralKey = await stripe.ephemeralKeys.create(
+        { customer: customerId },
+        stripeAccountId
+          ? { apiVersion: "2023-10-16", stripeAccount: stripeAccountId }
+          : { apiVersion: "2023-10-16" }
+      );
+
+      const paymentIntent = await stripe.paymentIntents.create(
+        {
+          amount,
+          currency: "usd",
+          customer: customerId,
+          automatic_payment_methods: { enabled: true },
+          ...(stripeAccountId && {
+            application_fee_amount: Math.round(amount * 0.1),
+          }),
+        },
+        stripeAccountId ? { stripeAccount: stripeAccountId } : undefined
+      );
 
       res.json({
         paymentIntent: paymentIntent.client_secret,
         ephemeralKey: ephemeralKey.secret,
-        customer: customer.id,
-        publishableKey: "pk_test_51LLWUzBDUXSD1c3FLs6vIFKT9eyd0O3ex9yA13jcaDhUJFcabm5VZkPZfCc7rikCWyTeVjZlM7dHXm10IlhoQBKG00g4SsRQfr",
+        customer: customerId,
+        publishableKey: "pk_test_51LLWUzBDUXSD1c3FLs6vIFKT9eyd0O3ex9yA13jcaDhUJFcabm5VZkPZfCc7rikCWyTeVjZlM7dHXm10IlhoQBKG00g4SsRQfr"
       });
     } catch (err) {
       console.error("❌ Stripe error:", err.message);
@@ -189,8 +189,28 @@ exports.createStripeAccountLink = onRequest({
 
       if (!uid) return res.status(400).json({ error: "Missing UID" });
 
-      const stripeAccountId = await createStripeAccountIfNeeded(stripe, uid);
+      const userRef = db.collection("users").doc(uid);
+      const userDoc = await userRef.get();
 
+      let stripeAccountId = userDoc.exists && userDoc.data()?.stripeAccountId;
+
+      // 🔧 Create a new Stripe Express account if none exists
+      if (!stripeAccountId) {
+        const account = await stripe.accounts.create({
+          type: "express",
+          capabilities: {
+            transfers: { requested: true },
+          },
+        });
+
+        stripeAccountId = account.id;
+
+        // ✅ Save to Firestore
+        await userRef.set({ stripeAccountId }, { merge: true });
+        console.log(`✅ Created and saved stripeAccountId: ${stripeAccountId}`);
+      }
+
+      // 🎯 Generate onboarding link
       const accountLink = await stripe.accountLinks.create({
         account: stripeAccountId,
         refresh_url: "https://example.com/cancel",

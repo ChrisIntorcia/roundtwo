@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from "react";
 import { View, Text, StyleSheet, Button, Alert } from "react-native";
 import { getAuth, signOut } from "firebase/auth";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
-import { AppContext } from "../context/AppContext"; // Ensure this exists in your project
+import { AppContext } from "../context/AppContext";
 
 const ProfileScreen = ({ navigation }) => {
   const { isSeller } = useContext(AppContext);
@@ -21,10 +21,15 @@ const ProfileScreen = ({ navigation }) => {
 
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
+          const data = userDoc.data();
           setUserInfo({
             email: user.email,
-            ranchName: userDoc.data().ranchName || "Not provided",
-            ranchLocation: userDoc.data().ranchLocation || "Not provided",
+            ranchName: data.ranchName || "Not provided",
+            ranchLocation: data.ranchLocation || "Not provided",
+            phoneNumber: data.phoneNumber || "Not provided",
+            shippingAddress: data.shippingAddress?.address || "Not provided",
+            hasPaymentMethod: data.hasPaymentMethod ? "Yes" : "No",
+            stripeVerified: data.stripeVerified ? "Yes" : "No",
           });
         } else {
           console.log("User document does not exist.");
@@ -42,7 +47,7 @@ const ProfileScreen = ({ navigation }) => {
     signOut(auth)
       .then(() => {
         Alert.alert("Success", "You have been logged out.");
-        navigation.replace("Login"); // Redirect to login screen
+        navigation.replace("Login");
       })
       .catch((error) => {
         console.error("Error logging out:", error);
@@ -56,10 +61,14 @@ const ProfileScreen = ({ navigation }) => {
       {userInfo ? (
         <>
           <Text style={styles.infoText}>Email: {userInfo.email}</Text>
+          <Text style={styles.infoText}>Phone: {userInfo.phoneNumber}</Text>
+          <Text style={styles.infoText}>Shipping Address: {userInfo.shippingAddress}</Text>
+          <Text style={styles.infoText}>Credit Card on File: {userInfo.hasPaymentMethod}</Text>
           {isSeller ? (
             <>
               <Text style={styles.infoText}>Ranch Name: {userInfo.ranchName}</Text>
               <Text style={styles.infoText}>Ranch Location: {userInfo.ranchLocation}</Text>
+              <Text style={styles.infoText}>Stripe Verified: {userInfo.stripeVerified}</Text>
               <Text style={styles.infoText}>Role: Seller</Text>
             </>
           ) : (

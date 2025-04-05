@@ -25,18 +25,33 @@ const AddShippingAddress = () => {
   const ref = useRef();
 
   const handleAddressSelect = async (data, details) => {
+    const components = details.address_components;
+  
+    const streetNumber = components.find(c => c.types.includes("street_number"))?.long_name || "";
+    const route = components.find(c => c.types.includes("route"))?.long_name || "";
+    const city = components.find(c => c.types.includes("locality"))?.long_name || "";
+    const state = components.find(c => c.types.includes("administrative_area_level_1"))?.short_name || "";
+    const zip = components.find(c => c.types.includes("postal_code"))?.long_name || "";
+    const country = components.find(c => c.types.includes("country"))?.long_name || "";
+  
+    const street = `${streetNumber} ${route}`.trim();
+  
     const address = {
       formatted: details.formatted_address,
-      street: details.address_components?.[0]?.long_name || "",
-      city: details.address_components?.find(c => c.types.includes("locality"))?.long_name || "",
-      state: details.address_components?.find(c => c.types.includes("administrative_area_level_1"))?.short_name || "",
-      zip: details.address_components?.find(c => c.types.includes("postal_code"))?.long_name || "",
-      country: details.address_components?.find(c => c.types.includes("country"))?.long_name || "",
+      street,
+      city,
+      state,
+      zip,
+      country,
+      location: {
+        lat: details.geometry.location.lat,
+        lng: details.geometry.location.lng,
+      },
     };
-
+  
     navigation.navigate("ConfirmAddress", { address });
   };
-
+  
   const handleShareLocation = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {

@@ -7,8 +7,14 @@ import {
   Alert,
   StyleSheet,
 } from "react-native";
-import { getAuth, EmailAuthProvider, reauthenticateWithCredential, updateEmail } from "firebase/auth";
+import {
+  getAuth,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updateEmail,
+} from "firebase/auth";
 import { getFirestore, doc, updateDoc } from "firebase/firestore";
+import CustomHeader from "../../components/CustomHeader";
 
 const ChangeEmail = () => {
   const [newEmail, setNewEmail] = useState("");
@@ -48,61 +54,67 @@ const ChangeEmail = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Change Email</Text>
+      <CustomHeader showBack />
+      <View style={styles.content}>
+        <Text style={styles.title}>Change Email</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="New email"
-        placeholderTextColor="#aaa"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={newEmail}
-        onChangeText={setNewEmail}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="New email"
+          placeholderTextColor="#888"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={newEmail}
+          onChangeText={setNewEmail}
+        />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Current password"
-        placeholderTextColor="#aaa"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Current password"
+          placeholderTextColor="#888"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={handleChangeEmail}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>
-          {loading ? "Updating..." : "Update Email"}
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleChangeEmail}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? "Updating..." : "Update Email"}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#121212",
+    backgroundColor: "#fff",
     flex: 1,
-    padding: 20,
+  },
+  content: {
+    flex: 1,
     justifyContent: "center",
+    paddingHorizontal: 20,
   },
   title: {
-    color: "white",
+    color: "#222",
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 30,
     textAlign: "center",
   },
   input: {
-    backgroundColor: "#1E1E1E",
-    color: "white",
+    backgroundColor: "#F1F1F1",
+    color: "#000",
     borderRadius: 8,
     padding: 14,
     marginBottom: 15,
-    borderColor: "#333",
+    borderColor: "#DDD",
     borderWidth: 1,
   },
   button: {
@@ -114,6 +126,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontWeight: "bold",
     fontSize: 16,
+    color: "#000",
   },
 });
 

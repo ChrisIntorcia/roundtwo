@@ -1,160 +1,171 @@
-import React, { useState, useRef } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-} from "react-native";
-import {
-  getAuth,
-  PhoneAuthProvider,
-  signInWithCredential,
-} from "firebase/auth";
+import React, { useEffect, useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
-import firebaseConfig from "../../firebaseConfig";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
-import DismissKeyboardView from "../../styles/DismissKeyboardView";
+import { getAuth } from "firebase/auth";
+import { useStripe } from "@stripe/stripe-react-native";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "../../firebaseConfig";
+import { Ionicons } from "@expo/vector-icons";
 
-const SellerVerificationScreen = () => {
-  const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
-  const [verificationId, setVerificationId] = useState(null);
-  const recaptchaVerifier = useRef(null);
-  const auth = getAuth();
-  const user = auth.currentUser;
+export default function SellerVerificationScreen() {
   const navigation = useNavigation();
+  const auth = getAuth();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
-  const handleSendCode = async () => {
-    try {
-      const formattedPhone = phone.startsWith("+") ? phone : `+1${phone}`;
-      const phoneProvider = new PhoneAuthProvider(auth);
-      const id = await phoneProvider.verifyPhoneNumber(
-        formattedPhone,
-        recaptchaVerifier.current
-      );
-      setVerificationId(id);
-      Alert.alert("✅ Code Sent", `A verification code was sent to ${formattedPhone}`);
-    } catch (error) {
-      console.error("📲 Error sending code:", error);
-      Alert.alert("Error", error.message);
-    }
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [identityVerified, setIdentityVerified] = useState(false);
+  const [paymentMethodVerified, setPaymentMethodVerified] = useState(false);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+      const data = userSnap.data();
+      setPhoneVerified(!!data?.phoneVerified);
+      setIdentityVerified(!!data?.identityVerified);
+      setPaymentMethodVerified(!!data?.hasSavedPaymentMethod);
+    };
+    fetchStatus();
+  }, []);
+
+  const openVerifyPhone = () => {
+    navigation.navigate("VerifyPhone");
   };
 
-  const handleConfirmCode = async () => {
-    try {
-      const credential = PhoneAuthProvider.credential(verificationId, code);
-      await signInWithCredential(auth, credential);
+  const openVerifyIdentity = () => {
+    navigation.navigate("VerifyIdentity");
+  };
 
-      if (user) {
-        const formattedPhone = phone.startsWith("+") ? phone : `+1${phone}`;
-        const userRef = doc(getFirestore(), "users", user.uid);
-        await setDoc(
-          userRef,
-          { phoneVerified: true, phoneNumber: formattedPhone },
-          { merge: true }
-        );
+  const openPaymentSheet = async () => {
+    const user = auth.currentUser;
+
+    if (!user || !user.email) {
+      Alert.alert("Login Required", "Please log in to add a payment method.");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentSheet",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: 500,
+            customerEmail: user.email,
+          }),
+        }
+      );
+
+      const json = await response.json();
+      if (!response.ok) {
+        throw new Error(json.error || "Failed to load payment sheet.");
       }
 
-      Alert.alert("🎉 You're verified!", "Phone number confirmed.");
-      navigation.goBack();
-    } catch (error) {
-      console.error("📵 Error confirming code:", error);
-      Alert.alert("Error", error.message);
+      const { paymentIntent, ephemeralKey, customer } = json;
+
+      const initResult = await initPaymentSheet({
+        customerId: customer,
+        customerEphemeralKeySecret: ephemeralKey,
+        paymentIntentClientSecret: paymentIntent,
+        merchantDisplayName: "Roundtwo",
+        returnURL: "roundtwo://stripe-redirect"
+      });
+
+      if (initResult.error) {
+        console.error("❌ initPaymentSheet error:", initResult.error.message);
+        Alert.alert("Stripe Init Error", initResult.error.message);
+        return;
+      }
+
+      const { error: sheetError } = await presentPaymentSheet();
+
+      if (sheetError) {
+        console.error("Payment Sheet Error:", sheetError);
+      } else {
+        const userRef = doc(db, "users", user.uid);
+        await setDoc(userRef, { hasSavedPaymentMethod: true }, { merge: true });
+        setPaymentMethodVerified(true);
+        Alert.alert("✅ Success", "Payment method added and saved!");
+      }
+    } catch (err) {
+      console.error("💥 Payment Sheet Error:", err);
+      Alert.alert("Error", err.message || "Something went wrong.");
     }
   };
 
   return (
-    <DismissKeyboardView>
-      <View style={styles.container}>
-        <FirebaseRecaptchaVerifierModal
-          ref={recaptchaVerifier}
-          firebaseConfig={firebaseConfig}
-          attemptInvisibleVerification={true}
-        />
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.header}>Seller Verification</Text>
+      <Text style={styles.subtext}>Complete the steps below to activate selling features.</Text>
 
-        <Text style={styles.title}>Complete Seller Verification</Text>
-        <Text style={styles.description}>
-          To sell on the platform, please verify your phone number.
-        </Text>
+      <TouchableOpacity style={styles.section} onPress={openVerifyPhone}>
+        <Ionicons name="call-outline" size={24} color="#444" style={styles.icon} />
+        <View>
+          <Text style={styles.sectionTitle}>Verify Phone Number</Text>
+          <Text style={styles.sectionSubtitle}>{phoneVerified ? "Verified" : "Verify"}</Text>
+        </View>
+        <Ionicons name="create-outline" size={20} color="#444" style={styles.editIcon} />
+      </TouchableOpacity>
 
-        <Text style={styles.label}>📱 Phone Number</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. 5555555555"
-          placeholderTextColor="#888"
-          keyboardType="phone-pad"
-          value={phone}
-          onChangeText={setPhone}
-        />
-        <TouchableOpacity style={styles.buttonAlt} onPress={handleSendCode}>
-          <Text style={styles.buttonText}>Send Verification Code</Text>
-        </TouchableOpacity>
+      <TouchableOpacity style={styles.section} onPress={openPaymentSheet}>
+        <Ionicons name="card-outline" size={24} color="#444" style={styles.icon} />
+        <View>
+          <Text style={styles.sectionTitle}>Add Payment Method</Text>
+          <Text style={styles.sectionSubtitle}>{paymentMethodVerified ? "Verified" : "Verify"}</Text>
+        </View>
+        <Ionicons name="create-outline" size={20} color="#444" style={styles.editIcon} />
+      </TouchableOpacity>
 
-        <Text style={styles.label}>🔒 Verification Code</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter the code"
-          placeholderTextColor="#888"
-          keyboardType="number-pad"
-          value={code}
-          onChangeText={setCode}
-        />
-        <TouchableOpacity style={styles.buttonAlt} onPress={handleConfirmCode}>
-          <Text style={styles.buttonText}>Confirm Code</Text>
-        </TouchableOpacity>
-      </View>
-    </DismissKeyboardView>
+      <TouchableOpacity style={styles.section} onPress={openVerifyIdentity}>
+        <Ionicons name="person-circle-outline" size={24} color="#444" style={styles.icon} />
+        <View>
+          <Text style={styles.sectionTitle}>Verify Identity</Text>
+          <Text style={styles.sectionSubtitle}>{identityVerified ? "Verified" : "Verify"}</Text>
+        </View>
+        <Ionicons name="create-outline" size={20} color="#444" style={styles.editIcon} />
+      </TouchableOpacity>
+    </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#121212",
     flex: 1,
+    backgroundColor: "#fff",
     padding: 20,
-    justifyContent: "center",
   },
-  title: {
-    color: "white",
-    fontSize: 24,
+  header: {
+    fontSize: 22,
     fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  description: {
-    color: "#ccc",
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 30,
-  },
-  label: {
-    color: "#aaa",
     marginBottom: 8,
-    fontSize: 16,
   },
-  input: {
-    backgroundColor: "#1E1E1E",
-    color: "white",
-    borderRadius: 8,
-    padding: 12,
+  subtext: {
+    fontSize: 14,
+    color: "gray",
     marginBottom: 20,
-    borderColor: "#333",
-    borderWidth: 1,
   },
-  buttonAlt: {
-    backgroundColor: "#4EA1F3",
-    paddingVertical: 14,
+  section: {
+    flexDirection: "row",
     alignItems: "center",
-    borderRadius: 10,
-    marginBottom: 10,
+    paddingVertical: 20,
+    borderBottomColor: "#eee",
+    borderBottomWidth: 1,
   },
-  buttonText: {
-    fontWeight: "bold",
+  sectionTitle: {
     fontSize: 16,
+    fontWeight: "bold",
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: "gray",
+  },
+  icon: {
+    marginRight: 12,
+  },
+  editIcon: {
+    marginLeft: "auto",
   },
 });
-
-export default SellerVerificationScreen;

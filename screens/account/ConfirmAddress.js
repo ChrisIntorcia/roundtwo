@@ -15,7 +15,7 @@ export default function ConfirmAddress() {
 
   const [form, setForm] = useState({
     fullName: "",
-    street: address.street || "",
+    street: address.street || address.formatted || "",
     city: address.city || "",
     state: address.state || "",
     zip: address.zip || "",
