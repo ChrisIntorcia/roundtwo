@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
-import { getAuth } from "firebase/auth";
+import { auth } from "../firebaseConfig";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
 import { AppContext } from "../context/AppContext";
 import { useNavigation } from "@react-navigation/native"; 
@@ -9,7 +9,6 @@ const SellerHub = () => {
   const navigation = useNavigation();
   const { isSeller } = useContext(AppContext);
   const [userInfo, setUserInfo] = useState(null);
-  const auth = getAuth();
   const db = getFirestore();
 
   useEffect(() => {

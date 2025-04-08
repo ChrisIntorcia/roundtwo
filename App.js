@@ -33,6 +33,8 @@ import ChangePassword from "./screens/account/ChangePassword";
 import ChangeEmail from "./screens/account/ChangeEmail";
 import VerifyPhone from "./screens/sellerHub/VerifyPhone";
 import VerifyIdentity from "./screens/sellerHub/VerifyIdentity";
+import PreStreamSetup from "./screens/PreStreamSetup";
+import BroadcasterScreen from "./screens/BroadcasterScreen";
 
 import { AppProvider } from "./context/AppContext";
 import { auth } from "./firebaseConfig";
@@ -98,6 +100,8 @@ export default function App() {
               <Stack.Screen name="ChangeEmail" component={ChangeEmail} options={{ headerShown: false }} />
               <Stack.Screen name="VerifyPhone" component={VerifyPhone} options={{ presentation: "modal", headerShown: false }} />
               <Stack.Screen name="VerifyIdentity" component={VerifyIdentity} options={{ title: "Verify Identity" }} />
+              <Stack.Screen name="PreStreamSetup" component={PreStreamSetup} options={{ headerShown: false }} />
+              <Stack.Screen name="BroadcasterScreen" component={BroadcasterScreen} options={{ headerShown: false }} />
             </Stack.Navigator>
           </NavigationContainer>
         </AppProvider>

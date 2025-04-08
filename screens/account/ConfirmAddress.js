@@ -3,14 +3,13 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useRoute, useNavigation } from "@react-navigation/native";
-import { getAuth } from "firebase/auth";
+import { auth } from "../../firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 
 export default function ConfirmAddress() {
   const route = useRoute();
   const navigation = useNavigation();
-  const auth = getAuth();
   const { address } = route.params;
 
   const [form, setForm] = useState({

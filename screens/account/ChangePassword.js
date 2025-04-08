@@ -7,8 +7,8 @@ import {
   Alert,
   StyleSheet,
 } from "react-native";
+import { auth } from "../../firebaseConfig"; 
 import {
-  getAuth,
   EmailAuthProvider,
   reauthenticateWithCredential,
   updatePassword,
@@ -20,7 +20,6 @@ const ChangePassword = () => {
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const auth = getAuth();
   const user = auth.currentUser;
 
   const handleChangePassword = async () => {

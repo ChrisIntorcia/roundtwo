@@ -3,12 +3,11 @@ import { createMaterialTopTabNavigator } from "@react-navigation/material-top-ta
 import SellerHub from "./SellerHub";
 import AccountScreen from "./AccountScreen";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { getAuth } from "firebase/auth";
+import { auth } from "../firebaseConfig";
 
 const Tab = createMaterialTopTabNavigator();
 
 const SellerAccountTabs = ({ navigation, route }) => {
-  const auth = getAuth();
   const user = auth.currentUser;
   const initialTab = route.params?.screen === "SellerHub" ? "Seller Hub" : "Account";
 

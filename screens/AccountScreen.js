@@ -9,10 +9,12 @@ import {
   StatusBar,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { getAuth, signOut } from "firebase/auth";
+import { auth } from "../firebaseConfig"; // ✅ use the persistent instance
+import { signOut } from "firebase/auth";  // ✅ keep this to use signOut()
 import { getFirestore, doc, getDoc } from "firebase/firestore";
 import { AppContext } from "../context/AppContext";
 import SellerHub from "./SellerHub";
+
 
 const db = getFirestore();
 
@@ -20,7 +22,6 @@ const AccountScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { isSeller } = useContext(AppContext);
-  const auth = getAuth();
   const [activeTab, setActiveTab] = useState("account");
   const [username, setUsername] = useState("User");
 

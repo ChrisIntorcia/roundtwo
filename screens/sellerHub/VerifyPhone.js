@@ -1,14 +1,12 @@
 import React, { useState, useRef } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
-import { getAuth, PhoneAuthProvider, signInWithCredential } from "firebase/auth";
+import { auth, db, firebaseConfig } from "../../firebaseConfig";
+import { PhoneAuthProvider, linkWithCredential } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
-import { db } from "../../firebaseConfig";
 import { useNavigation } from "@react-navigation/native";
 import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
-import { firebaseConfig } from "../../firebaseConfig";
 
 export default function VerifyPhone() {
-  const auth = getAuth();
   const navigation = useNavigation();
   const recaptchaVerifier = useRef(null);
 
@@ -21,17 +19,24 @@ export default function VerifyPhone() {
     const cleaned = input.replace(/[^0-9]/g, "");
     const match = cleaned.match(/(\d{0,3})(\d{0,3})(\d{0,4})/);
     if (!match) return "";
-    return [
-      match[1],
-      match[2] ? ` ${match[2]}` : "",
-      match[3] ? `-${match[3]}` : "",
-    ].join("");
+    return [match[1], match[2] ? `-${match[2]}` : "", match[3] ? `-${match[3]}` : ""].join("");
+  };
+
+  const handlePhoneChange = (text) => {
+    const digits = text.replace(/[^0-9]/g, "");
+    setPhone(formatPhone(digits));
   };
 
   const sendCode = async () => {
     try {
+      const cleaned = phone.replace(/[^0-9]/g, "");
+      if (cleaned.length !== 10) {
+        Alert.alert("Invalid Number", "Please enter a valid 10-digit US phone number.");
+        return;
+      }
+
       const provider = new PhoneAuthProvider(auth);
-      const formattedPhone = `+1${phone.replace(/[^0-9]/g, "")}`;
+      const formattedPhone = `+1${cleaned}`;
       const id = await provider.verifyPhoneNumber(formattedPhone, recaptchaVerifier.current);
       setVerificationId(id);
       setStep(2);
@@ -44,11 +49,17 @@ export default function VerifyPhone() {
   const confirmCode = async () => {
     try {
       const credential = PhoneAuthProvider.credential(verificationId, code);
-      const result = await signInWithCredential(auth, credential);
-      const user = result.user;
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        Alert.alert("Error", "You must be logged in to verify your phone number.");
+        return;
+      }
+
+      await linkWithCredential(currentUser, credential);
 
       await setDoc(
-        doc(db, "users", user.uid),
+        doc(db, "users", currentUser.uid),
         {
           phoneVerified: true,
           phoneNumber: `+1${phone.replace(/[^0-9]/g, "")}`,
@@ -82,11 +93,11 @@ export default function VerifyPhone() {
             </View>
             <TextInput
               style={[styles.input, { flex: 1 }]}
-              placeholder="123 456 7890"
+              placeholder="555-555-5555"
               keyboardType="phone-pad"
-              value={formatPhone(phone)}
-              onChangeText={(text) => setPhone(text)}
-              maxLength={14}
+              value={phone}
+              onChangeText={handlePhoneChange}
+              maxLength={12}
             />
           </View>
           <TouchableOpacity style={styles.button} onPress={sendCode}>

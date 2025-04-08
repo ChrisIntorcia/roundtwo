@@ -168,7 +168,7 @@ const BottomTabs = ({ navigation }) => {
                 style={styles.blueButton}
                 onPress={() => {
                   closeModals();
-                  rootNavigation.navigate("GoLiveScreen"); // ✅ fixed navigation to hide header
+                  rootNavigation.navigate("PreStreamSetup"); // ✅ fixed navigation to hide header
                 }}
               >
                 <Text style={styles.optionButtonText}>Schedule a Show</Text>

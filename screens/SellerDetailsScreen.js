@@ -1,14 +1,13 @@
 import React, { useContext, useState, useEffect } from "react";
 import { View, Text, StyleSheet, TextInput, Button, Alert } from "react-native";
 import { AppContext } from "../context/AppContext";
-import { getFirestore, collection, doc, setDoc } from "firebase/firestore";
-import { auth } from "../firebaseConfig"; // ✅ Correctly imported auth instance
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { auth, db } from "../firebaseConfig";
 
 const SellerDetailsScreen = ({ navigation }) => {
   const { becomeSeller } = useContext(AppContext);
   const [ranchName, setRanchName] = useState("");
   const [ranchLocation, setRanchLocation] = useState("");
-  const db = getFirestore(); // ✅ Firestore instance
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -33,8 +32,12 @@ const SellerDetailsScreen = ({ navigation }) => {
         return;
       }
 
-      const userRef = doc(collection(db, "users"), user.uid);
-      const sellerRef = doc(collection(db, "sellers"), user.uid);
+      const userRef = doc(db, "users", user.uid);
+      const sellerRef = doc(db, "sellers", user.uid);
+
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.data();
+      const username = userData?.username || user.email.split('@')[0];
 
       console.log("Updating Firestore user document with:", {
         ranchName,
@@ -42,11 +45,21 @@ const SellerDetailsScreen = ({ navigation }) => {
         isSeller: true,
       });
 
-      await setDoc(userRef, { ranchName, ranchLocation, isSeller: true }, { merge: true });
-      await setDoc(sellerRef, { uid: user.uid, email: user.email, ranchName, ranchLocation }, { merge: true });
+      await setDoc(userRef, {
+        ranchName,
+        ranchLocation,
+        isSeller: true
+      }, { merge: true });
+
+      await setDoc(sellerRef, {
+        uid: user.uid,
+        email: user.email,
+        username,
+        ranchName,
+        ranchLocation
+      }, { merge: true });
 
       console.log("User successfully added to sellers collection.");
-
       becomeSeller(ranchName, ranchLocation);
       Alert.alert("Success", "Your seller details have been saved!");
       navigation.navigate("MainApp", { screen: "Home" });

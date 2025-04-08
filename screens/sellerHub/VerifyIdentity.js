@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image, Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { getAuth } from "firebase/auth";
+import { auth } from "../../firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -23,7 +23,7 @@ export default function VerifyIdentity() {
   };
 
   const handleUpload = async () => {
-    const user = getAuth().currentUser;
+    const user = auth.currentUser;
     if (!user || !image) return;
 
     try {

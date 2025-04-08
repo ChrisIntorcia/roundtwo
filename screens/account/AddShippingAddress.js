@@ -13,7 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { getAuth } from "firebase/auth";
+import { auth } from "../../firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 
@@ -21,7 +21,6 @@ const GOOGLE_API_KEY = "AIzaSyDTHHIofdLua_s5TZIWzBvtfiv75oaWm1w"; // Replace wit
 
 const AddShippingAddress = () => {
   const navigation = useNavigation();
-  const auth = getAuth();
   const ref = useRef();
 
   const handleAddressSelect = async (data, details) => {

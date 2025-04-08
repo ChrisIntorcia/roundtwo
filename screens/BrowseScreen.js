@@ -1,23 +1,23 @@
 import React, { useEffect, useState } from "react";
-import { 
-  View, Text, FlatList, Image, StyleSheet, TouchableOpacity, 
-  Modal, TextInput, Button 
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  TouchableOpacity,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { getFirestore, collection, onSnapshot, doc, getDoc, setDoc } from "firebase/firestore";
-import { auth } from "../firebaseConfig"; // Ensure auth is correctly imported
+import { getFirestore, collection, onSnapshot } from "firebase/firestore";
+import FastImage from "react-native-fast-image";
 import CustomHeader from "../components/CustomHeader";
 
 const db = getFirestore();
 
-const HomeScreen = () => {
+const BrowseScreen = () => {
   const [products, setProducts] = useState([]);
-  const [username, setUsername] = useState("");
-  const [showPopup, setShowPopup] = useState(false);
   const navigation = useNavigation();
 
   useEffect(() => {
-    // Fetch products
     const unsubscribe = onSnapshot(collection(db, "products"), (snapshot) => {
       const productList = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -29,52 +29,42 @@ const HomeScreen = () => {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    // Check if user has a username
-    const checkUsername = async () => {
-      const user = auth.currentUser;
-      if (user) {
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
+  const renderItem = ({ item }) => {
+    const imageUrl =
+      item.images && Array.isArray(item.images) && item.images[0]
+        ? item.images[0]
+        : null;
 
-        if (userSnap.exists()) {
-          const userData = userSnap.data();
-          if (!userData.username) {
-            setShowPopup(true);
-          }
+    return (
+      <TouchableOpacity
+        style={styles.productCard}
+        onPress={() =>
+          navigation.navigate("ProductDetailsScreen", { product: item })
         }
-      }
-    };
-
-    checkUsername();
-  }, []);
-
-  const handleSetUsername = async () => {
-    const user = auth.currentUser;
-    if (user && username.trim()) {
-      const userRef = doc(db, "users", user.uid);
-      await setDoc(userRef, { username }, { merge: true });
-      setShowPopup(false);
-    }
-  };
-
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.productCard}
-      onPress={() => navigation.navigate("ProductDetailsScreen", { product: item })}
-    >
-      <Image source={{ uri: item.images[0] }} style={styles.image} />
-      <View style={styles.infoContainer}>
-        <Text style={styles.title}>{item.title}</Text>
-        <View style={styles.priceContainer}>
-          <Text style={styles.label}>Price:</Text>
-          <Text style={styles.price}>${item.fullPrice}</Text>
-          <Text style={styles.label}>Group Price:</Text>
-          <Text style={styles.price}>${item.groupPrice}</Text>
+      >
+        {imageUrl ? (
+          <FastImage
+            source={{ uri: imageUrl, priority: FastImage.priority.normal }}
+            style={styles.image}
+            resizeMode={FastImage.resizeMode.cover}
+          />
+        ) : (
+          <View style={[styles.image, styles.imagePlaceholder]}>
+            <Text style={{ color: "#aaa", fontSize: 12 }}>No Image</Text>
+          </View>
+        )}
+        <View style={styles.infoContainer}>
+          <Text style={styles.title}>{item.title}</Text>
+          <View style={styles.priceContainer}>
+            <Text style={styles.label}>Price:</Text>
+            <Text style={styles.price}>${item.fullPrice}</Text>
+            <Text style={styles.label}>Group Price:</Text>
+            <Text style={styles.price}>${item.groupPrice}</Text>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -86,23 +76,11 @@ const HomeScreen = () => {
         numColumns={2}
         columnWrapperStyle={styles.row}
         contentContainerStyle={{ paddingBottom: 20 }}
+        removeClippedSubviews={true}
+        initialNumToRender={4}
+        maxToRenderPerBatch={6}
+        windowSize={10}
       />
-
-      {/* Username Popup Modal */}
-      <Modal visible={showPopup} transparent animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Choose a Username</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter username"
-              value={username}
-              onChangeText={setUsername}
-            />
-            <Button title="Save" onPress={handleSetUsername} />
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };
@@ -111,12 +89,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f9f9f9",
-  },
-  header: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-    textAlign: "center",
   },
   row: {
     flexDirection: "row",
@@ -140,7 +112,11 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 150,
     borderRadius: 8,
-    resizeMode: "cover",
+  },
+  imagePlaceholder: {
+    backgroundColor: "#eee",
+    justifyContent: "center",
+    alignItems: "center",
   },
   infoContainer: {
     alignItems: "center",
@@ -157,6 +133,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: 2,
+    flexWrap: "wrap",
   },
   label: {
     fontSize: 12,
@@ -170,22 +147,6 @@ const styles = StyleSheet.create({
     color: "green",
     marginHorizontal: 2,
   },
-  // Modal styles
-  modalContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  modalContent: {
-    backgroundColor: "white",
-    padding: 20,
-    borderRadius: 10,
-    width: "80%",
-    alignItems: "center",
-  },
-  modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 10 },
-  input: { borderWidth: 1, borderColor: "#ccc", padding: 8, width: "100%", marginBottom: 10 },
 });
 
-export default HomeScreen;
+export default BrowseScreen;

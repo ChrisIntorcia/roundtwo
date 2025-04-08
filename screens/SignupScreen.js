@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, TextInput, Button, Text, StyleSheet } from "react-native";
+import { View, TextInput, Button, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { signUp, login } from "../authService";
 
 const SignupScreen = ({ navigation }) => {
@@ -7,41 +7,38 @@ const SignupScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
+    if (loading) return; // Prevent duplicate taps
+    setLoading(true);
+    setError("");
+
     try {
       await signUp(email, password, fullName);
-      await login(email, password); // Auto login after signup
-      navigation.navigate("MainApp"); // Navigates to MainApp where username prompt will appear
+      await login(email, password);
+      navigation.navigate("MainApp");
     } catch (err) {
       setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Sign Up</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Full Name"
-        value={fullName}
-        onChangeText={setFullName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+      <TextInput style={styles.input} placeholder="Full Name" value={fullName} onChangeText={setFullName} />
+      <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
+      <TextInput style={styles.input} placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} />
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      <Button title="Sign Up" onPress={handleSignup} />
+
+      {loading ? (
+        <ActivityIndicator size="small" />
+      ) : (
+        <Button title="Sign Up" onPress={handleSignup} disabled={loading} />
+      )}
+
       <Text style={styles.link} onPress={() => navigation.navigate("Login")}>
         Already have an account? Log in.
       </Text>

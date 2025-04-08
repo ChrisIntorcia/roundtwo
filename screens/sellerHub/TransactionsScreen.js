@@ -7,13 +7,12 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { getAuth } from "firebase/auth";
+import { auth } from "../../firebaseConfig";
 import { collection, query, where, getDocs, getFirestore } from "firebase/firestore";
 
 const TransactionsScreen = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const auth = getAuth();
   const db = getFirestore();
 
   useEffect(() => {

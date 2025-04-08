@@ -1,58 +1,53 @@
-import React from "react";
+import React, { useContext } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   Alert,
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { getAuth } from "firebase/auth";
 import { useStripe } from "@stripe/stripe-react-native";
 import { useNavigation } from "@react-navigation/native";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import CustomHeader from "../../components/CustomHeader";
+import { AppContext } from "../../context/AppContext";
 
 export default function PaymentsShippingScreen() {
-  const auth = getAuth();
+  const { user } = useContext(AppContext);
   const navigation = useNavigation();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const openPaymentSheet = async () => {
-    const user = auth.currentUser;
-
     if (!user) {
       Alert.alert("Login Required", "Please log in to add a payment method.");
       return;
     }
 
     try {
+      // Replace this with a REST endpoint (Firebase onRequest) or a hardcoded test response
       const response = await fetch(
-        "https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentSheet",
+        "https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentSheet",      
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            amount: 500,
-            customerEmail: user.email,
-          }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ customerEmail: user.email }),
         }
       );
 
-      const json = await response.json();
-
       if (!response.ok) {
-        throw new Error(json.error || "Failed to load payment sheet.");
+        throw new Error("Failed to fetch setup intent");
       }
 
-      const { paymentIntent, ephemeralKey, customer, publishableKey } = json;
+      const { setupIntentClientSecret, ephemeralKey, customer } = await response.json();
 
       const { error: initError } = await initPaymentSheet({
         customerId: customer,
         customerEphemeralKeySecret: ephemeralKey,
-        paymentIntentClientSecret: paymentIntent,
+        setupIntentClientSecret,
         merchantDisplayName: "Roundtwo",
       });
 
@@ -67,14 +62,13 @@ export default function PaymentsShippingScreen() {
         Alert.alert("Error", sheetError.message);
         return;
       }
-      
+
       const userRef = doc(db, "users", user.uid);
       await setDoc(userRef, { hasSavedPaymentMethod: true }, { merge: true });
-      Alert.alert("✅ Success", "Payment method added and saved!");
-      
 
+      Alert.alert("✅ Success", "Payment method added and saved!");
     } catch (err) {
-      console.error("💥 Payment Sheet Error:", err);
+      console.error("💥 Setup Sheet Error:", err);
       Alert.alert("Error", err.message || "Something went wrong.");
     }
   };
@@ -84,7 +78,7 @@ export default function PaymentsShippingScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <CustomHeader title="Payments & Shipping" showBack />
       <View style={styles.innerContainer}>
         <Text style={styles.subtext}>
@@ -134,7 +128,7 @@ export default function PaymentsShippingScreen() {
           />
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

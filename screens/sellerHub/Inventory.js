@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Image } from 'react-native';
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { auth } from '../../firebaseConfig'; 
 
 const db = getFirestore();
-const auth = getAuth();
 
 export default function Inventory() {
   const [products, setProducts] = useState([]);

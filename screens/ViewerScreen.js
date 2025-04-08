@@ -38,7 +38,7 @@ import {
   setDoc,
   deleteDoc,
 } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { auth } from '../firebaseConfig';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
@@ -59,12 +59,13 @@ export default function ViewerScreen({ route, navigation }) {
   const [countdown, setCountdown] = useState(null); 
   const rtcEngineRef = useRef(null);
   const db = getFirestore();
-  const auth = getAuth();
   const viewerUid = useRef(Math.floor(Math.random() * 1000000)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef();
   const broadcasterUidRef = useRef(null);
   const insets = useSafeAreaInsets();
+  const [broadcaster, setBroadcaster] = useState(null);
+  const [isFollowing, setIsFollowing] = useState(false);
 
   useEffect(() => {
     const startViewing = async () => {
@@ -146,6 +147,33 @@ export default function ViewerScreen({ route, navigation }) {
   }, []);
 
   useEffect(() => {
+    let interval = setInterval(() => {
+      const fetchBroadcaster = async () => {
+        try {
+          const streamDoc = await getDoc(doc(db, 'livestreams', channel));
+          const firebaseUid = streamDoc.data()?.firebaseUid;
+          if (!firebaseUid || typeof firebaseUid !== 'string') return;
+      
+          const docRef = doc(db, 'sellers', firebaseUid);
+          const userDoc = await getDoc(docRef);
+          console.log('👤 Broadcaster Firestore data:', userDoc.data());
+      
+          if (userDoc.exists()) {
+            setBroadcaster({ id: userDoc.id, ...userDoc.data() });
+          }
+        } catch (err) {
+          console.warn('⚠️ Failed to load broadcaster profile:', err);
+        }
+      };
+      
+      fetchBroadcaster();
+      clearInterval(interval);
+    }, 500);
+  
+    return () => clearInterval(interval);
+  }, []);    
+  
+  useEffect(() => {
     const unsubProduct = onSnapshot(doc(db, 'livestreams', channel), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data(); // ✅ Fix: define data before using
@@ -172,6 +200,40 @@ export default function ViewerScreen({ route, navigation }) {
     };
   }, [channel]);
 
+  useEffect(() => {
+    const checkFollowing = async () => {
+      const currentUser = auth.currentUser;
+      if (!currentUser || !broadcaster?.id) return;
+  
+      const docRef = doc(db, 'users', currentUser.uid, 'following', broadcaster.id);
+      const docSnap = await getDoc(docRef);
+      setIsFollowing(docSnap.exists());
+    };
+  
+    checkFollowing();
+  }, [broadcaster]);
+  
+  const toggleFollow = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser || !broadcaster?.id) return;
+  
+    const followRef = doc(db, 'users', currentUser.uid, 'following', broadcaster.id);
+  
+    try {
+      if (isFollowing) {
+        await deleteDoc(followRef);
+      } else {
+        await setDoc(followRef, {
+          followedAt: new Date(),
+          username: broadcaster.username || '',
+        });
+      }
+      setIsFollowing(!isFollowing);
+    } catch (err) {
+      console.error('⚠️ Failed to toggle follow:', err);
+    }
+  };
+  
   const sendMessage = async () => {
     const user = auth.currentUser;
     if (!chatInput.trim() || !user) return;
@@ -285,9 +347,10 @@ body: JSON.stringify({
         <View style={styles.headerRow}>
           <View style={styles.hostInfo}>
             <Image source={{ uri: 'https://via.placeholder.com/40' }} style={styles.avatar} />
-            <Text style={styles.hostName}>@seller</Text>
-            <Text style={styles.rating}>⭐ 4.9</Text>
-            <TouchableOpacity style={styles.follow}><Text style={{ color: '#000' }}>Follow</Text></TouchableOpacity>
+            <Text style={styles.hostName}>@{broadcaster?.username || 'seller'}</Text>
+            <TouchableOpacity style={styles.follow} onPress={toggleFollow}>
+  <Text style={{ color: '#000' }}>{isFollowing ? 'Following' : 'Follow'}</Text>
+</TouchableOpacity>
           </View>
 
           <View style={styles.viewerInfo}>
@@ -374,8 +437,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 10, position: 'absolute', top: 40, left: 0, right: 0, zIndex: 10 },
   hostInfo: { flexDirection: 'row', alignItems: 'center' },
   avatar: { width: 40, height: 40, borderRadius: 20 },
-  hostName: { color: '#fff', marginLeft: 6 },
-  rating: { color: '#fff', marginLeft: 4 },
+  hostName: { color: '#fff', marginLeft: 1 },
   follow: { backgroundColor: 'yellow', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 6 },
   viewerInfo: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFD700', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4,marginRight: 30 },
   viewerCount: { fontWeight: 'bold'},

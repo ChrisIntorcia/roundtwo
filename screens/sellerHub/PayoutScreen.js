@@ -9,7 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { getAuth } from "firebase/auth";
+import { auth } from "../../firebaseConfig";
 import { doc, getDoc, getFirestore, updateDoc } from "firebase/firestore";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 
@@ -19,7 +19,6 @@ const PayoutScreen = () => {
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
-  const auth = getAuth();
   const db = getFirestore();
   const navigation = useNavigation();
 

@@ -8,7 +8,9 @@ import {
   StyleSheet,
 } from "react-native";
 import {
-  getAuth,
+  auth,
+} from "../../firebaseConfig";
+import {
   EmailAuthProvider,
   reauthenticateWithCredential,
   updateEmail,
@@ -21,7 +23,6 @@ const ChangeEmail = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const auth = getAuth();
   const user = auth.currentUser;
   const db = getFirestore();
 

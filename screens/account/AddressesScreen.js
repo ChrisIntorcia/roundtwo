@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
-import { getAuth } from "firebase/auth";
+import { auth } from "../../firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import CustomHeader from "../../components/CustomHeader";
@@ -16,7 +16,6 @@ import { useNavigation } from "@react-navigation/native";
 const AddressesScreen = () => {
   const [address, setAddress] = useState(null);
   const [loading, setLoading] = useState(true);
-  const auth = getAuth();
   const navigation = useNavigation();
 
   useEffect(() => {
