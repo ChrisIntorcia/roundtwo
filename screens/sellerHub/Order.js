@@ -1,26 +1,27 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { db } from '../../firebaseConfig';
 import { collection, query, where, onSnapshot, orderBy, updateDoc, doc } from 'firebase/firestore';
 import { auth } from '../../firebaseConfig';
 import { AppContext } from '../../context/AppContext';
+import * as Print from 'expo-print'; // 🔥 added for packing slip
 
 const Order = () => {
   const { user } = useContext(AppContext);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('all'); // 'all' | 'fulfilled' | 'unfulfilled'
+  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     if (!user) return;
 
     const q = query(
-        collection(db, 'orders'),
-        where('sellerId', '==', user.uid),
-        orderBy('fulfilled'),
-        orderBy('purchasedAt', 'desc')
-      )
+      collection(db, 'orders'),
+      where('sellerId', '==', user.uid),
+      orderBy('fulfilled'),
+      orderBy('purchasedAt', 'desc')
+    );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
@@ -40,6 +41,34 @@ const Order = () => {
       fulfilled: !currentStatus,
       fulfilledAt: !currentStatus ? new Date() : null,
     });
+  };
+
+  const updateTrackingNumber = async (orderId, trackingNumber) => {
+    const ref = doc(db, 'orders', orderId);
+    await updateDoc(ref, { trackingNumber });
+  };
+
+  const generatePackingSlip = async (order) => {
+    const html = `
+      <html>
+        <body style="font-family: Arial; padding: 20px;">
+          <h1>Packing Slip</h1>
+          <p><strong>Product:</strong> ${order.title}</p>
+          <p><strong>Price:</strong> $${order.price}</p>
+          <p><strong>Buyer:</strong> ${order.buyerEmail}</p>
+          <p><strong>Shipping Address:</strong></p>
+          <pre>${JSON.stringify(order.shippingAddress, null, 2)}</pre>
+          <p><strong>Tracking Number:</strong> ${order.trackingNumber || 'N/A'}</p>
+          <p><strong>Date:</strong> ${new Date(order.purchasedAt.toDate()).toLocaleString()}</p>
+        </body>
+      </html>
+    `;
+
+    try {
+      await Print.printAsync({ html });
+    } catch (err) {
+      Alert.alert('Error', 'Failed to generate packing slip.');
+    }
   };
 
   const filteredOrders = orders
@@ -69,12 +98,35 @@ const Order = () => {
         </TouchableOpacity>
       </View>
       <Text style={styles.meta}>Buyer: {item.buyerEmail}</Text>
-      <Text style={styles.meta}>Stream: {item.channel}</Text>
+            {item.shippingAddress && (
+        <View style={styles.addressBox}>
+            <Text style={styles.meta}>Shipping Address:</Text>
+            <Text style={styles.addressLine}>
+            {item.shippingAddress.name}
+            </Text>
+            <Text style={styles.addressLine}>
+            {item.shippingAddress.street}
+            </Text>
+            <Text style={styles.addressLine}>
+            {item.shippingAddress.city}, {item.shippingAddress.state} {item.shippingAddress.zip}
+            </Text>
+        </View>
+        )}
+      <Text style={styles.meta}>Stream: {item.streamTitle || item.channel}</Text>
       <Text style={styles.meta}>Price: ${item.price}</Text>
       <Text style={styles.meta}>Date: {new Date(item.purchasedAt.toDate()).toLocaleString()}</Text>
       {item.fulfilledAt && (
         <Text style={styles.meta}>Fulfilled: {new Date(item.fulfilledAt.toDate()).toLocaleString()}</Text>
       )}
+      <TextInput
+        style={styles.trackingInput}
+        placeholder="Tracking Number"
+        value={item.trackingNumber || ''}
+        onChangeText={(text) => updateTrackingNumber(item.id, text)}
+      />
+      <TouchableOpacity onPress={() => generatePackingSlip(item)}>
+        <Text style={styles.link}>🖨️ Print Packing Slip</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -95,24 +147,15 @@ const Order = () => {
         onChangeText={setSearch}
       />
       <View style={styles.toggleRow}>
-        <TouchableOpacity
-          onPress={() => setFilter('all')}
-          style={[styles.filterButton, filter === 'all' && styles.activeFilter]}
-        >
-          <Text style={styles.filterText}>All</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setFilter('unfulfilled')}
-          style={[styles.filterButton, filter === 'unfulfilled' && styles.activeFilter]}
-        >
-          <Text style={styles.filterText}>Unfulfilled</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setFilter('fulfilled')}
-          style={[styles.filterButton, filter === 'fulfilled' && styles.activeFilter]}
-        >
-          <Text style={styles.filterText}>Fulfilled</Text>
-        </TouchableOpacity>
+        {['all', 'unfulfilled', 'fulfilled'].map((key) => (
+          <TouchableOpacity
+            key={key}
+            onPress={() => setFilter(key)}
+            style={[styles.filterButton, filter === key && styles.activeFilter]}
+          >
+            <Text style={styles.filterText}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
       {filteredOrders.length === 0 ? (
         <Text style={styles.noOrders}>No orders found</Text>
@@ -192,8 +235,33 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 12,
   },
+  trackingInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 6,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  link: {
+    marginTop: 8,
+    color: '#007bff',
+    textDecorationLine: 'underline',
+    fontSize: 14,
+  },
   noOrders: { textAlign: 'center', marginTop: 30, color: '#888' },
   list: { paddingBottom: 30 },
+  addressBox: {
+    backgroundColor: '#f5f5f5',
+    padding: 10,
+    borderRadius: 6,
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  addressLine: {
+    fontSize: 13,
+    color: '#444',
+  },
+  
 });
 
 export default Order;

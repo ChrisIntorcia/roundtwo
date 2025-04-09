@@ -20,6 +20,7 @@ import {
   getDocs,
   onSnapshot,
   updateDoc,
+  deleteDoc
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import {
@@ -30,8 +31,33 @@ import {
   VideoSourceType,
 } from 'react-native-agora';
 
+
 // Accent color for UI highlights (user can adjust if needed)
 const ACCENT_COLOR = '#4caf50';
+
+const clearChatMessages = async (channelName, db) => {
+  try {
+    const msgRef = collection(db, 'livestreams', channelName, 'messages');
+    const snapshot = await getDocs(msgRef);
+    const deletes = snapshot.docs.map((doc) => deleteDoc(doc.ref));
+    await Promise.all(deletes);
+    console.log('✅ Old messages cleared');
+  } catch (err) {
+    console.error('🔥 Failed to clear chat messages:', err);
+  }
+};
+
+const clearViewers = async (channelName, db) => {
+  try {
+    const viewerRef = collection(db, 'livestreams', channelName, 'viewers');
+    const snapshot = await getDocs(viewerRef);
+    const deletes = snapshot.docs.map((doc) => deleteDoc(doc.ref));
+    await Promise.all(deletes);
+    console.log('✅ Old viewers cleared');
+  } catch (err) {
+    console.error('🔥 Failed to clear viewers:', err);
+  }
+};
 
 export default function BroadcasterScreen({ route, navigation }) {
   const { channelName, broadcasterUid, token } = route.params;
@@ -53,8 +79,26 @@ export default function BroadcasterScreen({ route, navigation }) {
   const db = getFirestore();
 
   useEffect(() => {
-    fetchProducts();
-
+    const initializeStream = async () => {
+      try {
+        await setDoc(doc(db, 'livestreams', channelName), {
+          isLive: true,
+          broadcasterUid,
+          firebaseUid: user.uid,
+          startedAt: new Date(),
+        }, { merge: true });
+  
+        await clearChatMessages(channelName, db);
+        await clearViewers(channelName, db);
+      } catch (err) {
+        console.warn('⚠️ Failed to initialize stream or clear chat:', err);
+      }
+    };
+  
+    initializeStream();
+  
+    const unsubscribeProducts = fetchProducts();
+  
     const unsubMessages = onSnapshot(
       collection(db, 'livestreams', channelName, 'messages'),
       (snapshot) => {
@@ -62,14 +106,14 @@ export default function BroadcasterScreen({ route, navigation }) {
         setMessages(msgs);
       }
     );
-
+  
     const unsubViewers = onSnapshot(
       collection(db, 'livestreams', channelName, 'viewers'),
       (snapshot) => {
         setViewerCount(snapshot.size);
       }
     );
-
+  
     return () => {
       rtcEngineRef.current?.leaveChannel();
       rtcEngineRef.current?.release();
@@ -78,7 +122,7 @@ export default function BroadcasterScreen({ route, navigation }) {
       unsubViewers();
     };
   }, []);
-
+  
   useEffect(() => {
     if (!joined || !carouselTimer || products.length === 0) return;
 
@@ -105,11 +149,12 @@ export default function BroadcasterScreen({ route, navigation }) {
     return () => clearInterval(interval);
   }, [carouselTimer, joined, selectedIndex, products]);
 
-  const fetchProducts = async () => {
+  const fetchProducts = () => {
     const q = query(collection(db, 'products'), where('sellerId', '==', user.uid));
-    const snapshot = await getDocs(q);
-    const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    setProducts(items);
+    return onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setProducts(items);
+    });
   };
 
   const updateSelectedProduct = async (product) => {
@@ -156,7 +201,10 @@ export default function BroadcasterScreen({ route, navigation }) {
         data={messages.slice(-4)}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <Text style={styles.message}>{item.sender}: {item.text}</Text>
+          <Text style={styles.message}>
+            <Text style={styles.messageSender}>{item.sender}: </Text>
+            {item.text}
+          </Text>
         )}
         style={styles.chatOverlay}
       />
@@ -288,10 +336,12 @@ const styles = StyleSheet.create({
   message: {
     color: '#fff',
     fontSize: 14,
-    marginBottom: 6,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: 6,
-    borderRadius: 8,
+    lineHeight: 20,
+    marginBottom: 4,
+    paddingVertical: 1,
+  },
+  messageSender: {
+    fontWeight: 'bold',
   },
   optionsButton: {
     position: 'absolute',
@@ -381,7 +431,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 14,
-    width: 140,
+    width: 100,
     alignItems: 'center',
     // Add shadow for card elevation
     shadowColor: '#000',
@@ -391,8 +441,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   productImage: {
-    width: 100,
-    height: 100,
+    width: 70,
+    height: 70,
     borderRadius: 10,
     marginBottom: 8,
   },

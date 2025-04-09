@@ -70,10 +70,10 @@ export default function HomeScreen() {
       <View style={styles.liveBadge}>
         <Text style={styles.liveText}>🔴 {item.viewers} watching</Text>
       </View>
-      <View style={styles.infoSection}>
-        <Text style={styles.streamer}>{item.streamer}</Text>
-        <Text style={styles.title}>{item.title || 'Untitled Stream'}</Text>
-      </View>
+        <View style={styles.infoSection}>
+          <Text style={styles.title}>{item.title || 'Untitled Stream'}</Text>
+          <Text style={styles.streamer}>{item.streamer}</Text>
+        </View>
     </TouchableOpacity>
   );
 
@@ -161,14 +161,16 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   streamer: {
-    color: '#444',
-    fontWeight: 'bold',
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  title: {
+    fontSize: 12,
+    fontWeight: '400',
     color: '#666',
-    fontSize: 13,
+    fontFamily: 'System',
+  },  
+  title: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111',
+    fontFamily: 'System',
   },
   emptyText: {
     textAlign: 'center',

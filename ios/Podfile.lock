@@ -316,6 +316,8 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - ExpoPrint (14.0.3):
+    - ExpoModulesCore
   - ExpoRandom (14.0.1):
     - ExpoModulesCore
   - ExpoWebBrowser (14.0.2):
@@ -2373,6 +2375,7 @@ DEPENDENCIES:
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
   - ExpoLocation (from `../node_modules/expo-location/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
+  - ExpoPrint (from `../node_modules/expo-print/ios`)
   - ExpoRandom (from `../node_modules/expo-random/ios`)
   - ExpoWebBrowser (from `../node_modules/expo-web-browser/ios`)
   - EXUpdatesInterface (from `../node_modules/expo-updates-interface/ios`)
@@ -2536,6 +2539,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-location/ios"
   ExpoModulesCore:
     :path: "../node_modules/expo-modules-core"
+  ExpoPrint:
+    :path: "../node_modules/expo-print/ios"
   ExpoRandom:
     :path: "../node_modules/expo-random/ios"
   ExpoWebBrowser:
@@ -2725,6 +2730,7 @@ SPEC CHECKSUMS:
   ExpoLinking: 8d12bee174ba0cdf31239706578e29e74a417402
   ExpoLocation: e7dc025bde1bd3091ad7e616ea6145240672b2e4
   ExpoModulesCore: ba9b945045622419389980d0c3a3d89d155595b0
+  ExpoPrint: 13208d67f48c190ccfeb9b97aa3394ff31ec606b
   ExpoRandom: d1444df65007bdd4070009efd5dab18e20bf0f00
   ExpoWebBrowser: a212e6b480d8857d3e441fba51e0c968333803b3
   EXUpdatesInterface: 7c977640bdd8b85833c19e3959ba46145c5719db

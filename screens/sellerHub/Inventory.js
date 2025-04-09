@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Image } from 'react-native';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot } from 'firebase/firestore';
 import { auth } from '../../firebaseConfig'; 
 
 const db = getFirestore();
@@ -12,11 +12,12 @@ export default function Inventory() {
     const fetchProducts = async () => {
       const user = auth.currentUser;
       if (!user) return;
-
+    
       const productsRef = collection(db, 'users', user.uid, 'products');
-      const snapshot = await getDocs(productsRef);
-      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setProducts(items);
+      onSnapshot(productsRef, (snapshot) => {
+        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setProducts(items);
+      });
     };
 
     fetchProducts();

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   TouchableOpacity,
   Image,
@@ -35,6 +36,7 @@ export default function PreStreamSetup() {
   const db = getFirestore();
   const navigation = useNavigation();
   const channelName = user?.uid;
+  const [streamTitle, setStreamTitle] = useState('');
 
   const pickThumbnail = async () => {
     if (isLoading) return;
@@ -148,6 +150,7 @@ export default function PreStreamSetup() {
       broadcasterUid: uid,
       firebaseUid: user.uid,
       thumbnailUrl,
+      title: streamTitle, 
       viewers: 0,
       isLive: true,
       createdAt: serverTimestamp(),
@@ -166,6 +169,13 @@ export default function PreStreamSetup() {
       <CustomHeader title="Go Live Setup" showBack={true} />
       <View style={styles.container}>
         <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Stream Title</Text>
+          <TextInput
+            placeholder="Enter stream title"
+            value={streamTitle}
+            onChangeText={setStreamTitle}
+            style={styles.input}
+          />
           <Text style={styles.sectionTitle}>Thumbnail</Text>
           <TouchableOpacity style={styles.actionButton} onPress={pickThumbnail} disabled={isLoading}>
             <Text style={styles.buttonText}>Select Thumbnail</Text>
@@ -270,4 +280,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     lineHeight: 20,
   },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 20,
+  }
 });

@@ -37,6 +37,8 @@ import {
   addDoc,
   setDoc,
   deleteDoc,
+  updateDoc,
+  runTransaction
 } from 'firebase/firestore';
 import { auth } from '../firebaseConfig';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -178,6 +180,15 @@ export default function ViewerScreen({ route, navigation }) {
       if (docSnap.exists()) {
         const data = docSnap.data(); // ✅ Fix: define data before using
         setSelectedProduct(data.selectedProduct || null);
+        if (data.selectedProduct?.id) {
+          const globalProductRef = doc(db, 'products', data.selectedProduct.id);
+          onSnapshot(globalProductRef, (productSnap) => {
+            const qty = productSnap.data()?.groupAmount;
+            if (qty !== undefined) {
+              setSelectedProduct(prev => prev ? { ...prev, groupAmount: qty } : null);
+            }
+          });
+        }
         setCountdown(data.carouselCountdown || null);
       }
     });
@@ -289,6 +300,13 @@ export default function ViewerScreen({ route, navigation }) {
         purchasedAt: new Date(),
       });
 
+// ✅ Fetch the stream document so we can get the stream title
+const streamDoc = await getDoc(doc(db, 'livestreams', channel));
+if (!streamDoc.exists()) {
+  throw new Error('Stream not found.');
+}
+const streamTitle = streamDoc.data()?.title || '';
+
       await addDoc(collection(db, 'orders'), {
         buyerId: user.uid,
         buyerEmail: user.email,
@@ -296,28 +314,33 @@ export default function ViewerScreen({ route, navigation }) {
         productId: selectedProduct.id,
         title: selectedProduct.title,
         price: selectedProduct.fullPrice,
+        shippingAddress: shipping, 
         channel,
+        streamTitle,
+        fulfilled: false,
         purchasedAt: new Date(),
-        fulfilled: false, 
-        fulfilledAt: null,
       });
 
-      const productRef = doc(db, 'livestreams', channel);
-      const docSnap = await getDoc(productRef);
-      const productData = docSnap.data()?.selectedProduct;
 
-      if (productData?.groupAmount <= 0) {
-        return Alert.alert('Sold Out', 'This item is no longer available.');
-      }
+// 🔁 Update groupAmount in global and user-owned product docs
+const productId = selectedProduct.id;
+const newQty = selectedProduct.groupAmount - 1;
 
-      if (productData?.groupAmount > 0) {
-        const updatedProduct = {
-          ...productData,
-          groupAmount: productData.groupAmount - 1,
-        };
-        await setDoc(productRef, { selectedProduct: updatedProduct }, { merge: true });
-      }
+const productRefGlobal = doc(db, 'products', productId);
+const productRefUser = doc(db, 'users', selectedProduct.sellerId, 'products', productId);
 
+await runTransaction(db, async (transaction) => {
+  const globalSnap = await transaction.get(productRefGlobal);
+  const userSnap = await transaction.get(productRefUser);
+
+  const currentQty = globalSnap.data()?.groupAmount;
+  if (currentQty === undefined || currentQty <= 0) {
+    throw new Error('Sold Out');
+  }
+
+  transaction.update(productRefGlobal, { groupAmount: currentQty - 1 });
+  transaction.update(productRefUser, { groupAmount: currentQty - 1 });
+});
       setTimeout(() => {
         setShowConfetti(false);
         setPurchaseBanner(null);
