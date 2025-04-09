@@ -248,43 +248,38 @@ export default function ViewerScreen({ route, navigation }) {
   const handleBuy = async () => {
     const user = auth.currentUser;
     if (!user || !selectedProduct) return;
-  
+
     try {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       const shipping = userDoc.data()?.shippingAddress;
       const hasCard = userDoc.data()?.hasSavedPaymentMethod;
-  
+
       if (!shipping || !hasCard) {
         return Alert.alert(
           'Missing Info',
           'You are required to have payment and shipping info to purchase this item.'
         );
       }
-  
-      // Call your Firebase function to create a PaymentSheet
-      const res = await fetch('https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentSheet', {
+
+      const res = await fetch('https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentIntent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify({
-  amount: Math.round(selectedProduct.fullPrice * 100),
-  customerEmail: user.email,
-  stripeAccountId: selectedProduct.stripeAccountId,
-  stripeCustomerId: userDoc.data()?.stripeCustomerId,
-})
-
+        body: JSON.stringify({
+          amount: Math.round(selectedProduct.fullPrice * 100),
+          buyerEmail: user.email,
+          stripeAccountId: selectedProduct.stripeAccountId,
+          application_fee_amount: Math.round(selectedProduct.fullPrice * 100 * 0.1)
+        }),
       });
-  
-      const data = await res.json();
 
-      if (!res.ok) {
+      const data = await res.json();
+      if (!res.ok || !data.success) {
         throw new Error(data.error || 'Payment failed.');
       }
-      
-      // ✅ Payment succeeded!
+
       setShowConfetti(true);
-      setPurchaseBanner(`${user.displayName || user.email} Purchase Complete! "${selectedProduct.title}"`);      
-  
-      // Log it in Firestore
+      setPurchaseBanner(`${user.displayName || user.email} Purchase Complete! "${selectedProduct.title}"`);
+
       await addDoc(collection(db, 'users', user.uid, 'purchases'), {
         productId: selectedProduct.id,
         title: selectedProduct.title,
@@ -294,7 +289,19 @@ body: JSON.stringify({
         purchasedAt: new Date(),
       });
 
-      // Optional: Reduce product quantity
+      await addDoc(collection(db, 'orders'), {
+        buyerId: user.uid,
+        buyerEmail: user.email,
+        sellerId: selectedProduct.sellerId,
+        productId: selectedProduct.id,
+        title: selectedProduct.title,
+        price: selectedProduct.fullPrice,
+        channel,
+        purchasedAt: new Date(),
+        fulfilled: false, 
+        fulfilledAt: null,
+      });
+
       const productRef = doc(db, 'livestreams', channel);
       const docSnap = await getDoc(productRef);
       const productData = docSnap.data()?.selectedProduct;
@@ -302,7 +309,7 @@ body: JSON.stringify({
       if (productData?.groupAmount <= 0) {
         return Alert.alert('Sold Out', 'This item is no longer available.');
       }
-  
+
       if (productData?.groupAmount > 0) {
         const updatedProduct = {
           ...productData,
@@ -310,7 +317,7 @@ body: JSON.stringify({
         };
         await setDoc(productRef, { selectedProduct: updatedProduct }, { merge: true });
       }
-  
+
       setTimeout(() => {
         setShowConfetti(false);
         setPurchaseBanner(null);

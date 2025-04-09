@@ -82,20 +82,25 @@ export default function BroadcasterScreen({ route, navigation }) {
   useEffect(() => {
     if (!joined || !carouselTimer || products.length === 0) return;
 
-    const interval = setInterval(() => {
-      setSelectedIndex(prevIndex => {
-        const nextIndex = (prevIndex + 1) % products.length;
-        const nextProduct = products[nextIndex];
-        setSelectedProduct(nextProduct);
-
-        setDoc(doc(db, 'livestreams', user.uid), {
-          selectedProduct: nextProduct,
-          carouselCountdown: carouselTimer,
-        }, { merge: true });
-
-        return nextIndex;
-      });
-    }, carouselTimer * 1000);
+    const interval = setInterval(async () => {
+      const nextIndex = (carouselIndex + 1) % products.length;
+      const nextProduct = products[nextIndex];
+    
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const stripeAccountId = nextProduct.stripeAccountId || userDoc.data()?.stripeAccountId || null;
+    
+      const productToSend = {
+        ...nextProduct,
+        stripeAccountId,
+      };
+    
+      await setDoc(doc(db, 'livestreams', user.uid), {
+        selectedProduct: productToSend,
+        carouselCountdown: carouselTimer,
+      }, { merge: true });
+    
+      setCarouselIndex(nextIndex);
+    }, carouselTimer);
 
     return () => clearInterval(interval);
   }, [carouselTimer, joined, selectedIndex, products]);

@@ -30,71 +30,6 @@ async function createStripeAccountIfNeeded(stripe, uid) {
   return stripeAccountId;
 }
 
-// ✅ Create Stripe Payment Sheet — works for buyers with or without a stripeAccountId
-exports.createPaymentSheet = onRequest({
-  secrets: [STRIPE_SECRET_KEY],
-  timeoutSeconds: 60,
-  memory: "256Mi",
-  cpu: 1,
-}, async (req, res) => {
-  cors(req, res, async () => {
-    const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
-    const { amount, customerEmail, stripeAccountId, stripeCustomerId } = req.body;
-
-    if (!amount || !customerEmail) {
-      return res.status(400).json({ error: "Missing amount or customerEmail" });
-    }
-
-    try {
-      let customerId = stripeCustomerId;
-
-      // If no customer ID is passed, create one and save to Firestore
-      if (!customerId) {
-        const newCustomer = await stripe.customers.create({ email: customerEmail });
-        customerId = newCustomer.id;
-
-        // 🔐 Save the Stripe customer ID to Firestore for reuse
-        const userSnapshot = await db.collection("users").where("email", "==", customerEmail).get();
-        if (!userSnapshot.empty) {
-          const userDoc = userSnapshot.docs[0];
-          await userDoc.ref.set({ stripeCustomerId: customerId }, { merge: true });
-        }
-      }
-
-      const ephemeralKey = await stripe.ephemeralKeys.create(
-        { customer: customerId },
-        stripeAccountId
-          ? { apiVersion: "2023-10-16", stripeAccount: stripeAccountId }
-          : { apiVersion: "2023-10-16" }
-      );
-
-      const paymentIntent = await stripe.paymentIntents.create(
-        {
-          amount,
-          currency: "usd",
-          customer: customerId,
-          automatic_payment_methods: { enabled: true },
-          ...(stripeAccountId && {
-            application_fee_amount: Math.round(amount * 0.1),
-          }),
-        },
-        stripeAccountId ? { stripeAccount: stripeAccountId } : undefined
-      );
-
-      res.json({
-        paymentIntent: paymentIntent.client_secret,
-        ephemeralKey: ephemeralKey.secret,
-        customer: customerId,
-        publishableKey: "pk_test_51LLWUzBDUXSD1c3FLs6vIFKT9eyd0O3ex9yA13jcaDhUJFcabm5VZkPZfCc7rikCWyTeVjZlM7dHXm10IlhoQBKG00g4SsRQfr"
-      });
-    } catch (err) {
-      console.error("❌ Stripe error:", err.message);
-      res.status(500).json({ error: err.message });
-    }
-  });
-});
-
-
 // ✅ Checkout session
 exports.createCheckoutSession = onRequest({
   secrets: [STRIPE_SECRET_KEY],
@@ -269,6 +204,10 @@ exports.createPaymentIntent = onRequest({
   cpu: 1,
 }, async (req, res) => {
   cors(req, res, async () => {
+    if (req.method !== 'POST') {
+      return res.status(405).send('Method Not Allowed');
+    }
+
     try {
       const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
       const { amount, stripeAccountId, buyerEmail, application_fee_amount } = req.body;

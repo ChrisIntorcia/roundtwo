@@ -18,6 +18,7 @@ import { getApp } from "firebase/app";
 import { auth } from '../firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import * as ImageManipulator from 'expo-image-manipulator'; 
+import { doc, getDoc } from 'firebase/firestore';
 
 const app = getApp();
 const db = getFirestore();
@@ -100,6 +101,9 @@ const CreateProduct = () => {
           return getDownloadURL(storageRef);
         })
       );
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const stripeAccountId = userDoc.data()?.stripeAccountId || null;
+
   
       const productData = {
         sellerId: user.uid,
@@ -113,6 +117,7 @@ const CreateProduct = () => {
         currency: 'usd',
         images: imageUrls,
         createdAt: Timestamp.now(),
+        stripeAccountId, 
       };
   
       await addDoc(collection(db, 'users', user.uid, 'products'), productData);

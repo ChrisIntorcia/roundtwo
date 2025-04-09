@@ -40,9 +40,9 @@ const SellerHub = () => {
           <TouchableOpacity style={styles.gridItem} onPress={() => navigation.navigate('PayoutScreen')}>
             <Text style={styles.gridText}>Payouts</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.gridItem}>
-            <Text style={styles.gridText}>Orders</Text>
-          </TouchableOpacity>
+          <TouchableOpacity style={styles.gridItem} onPress={() => navigation.navigate('Order')}>
+  <Text style={styles.gridText}>Orders</Text>
+</TouchableOpacity>
         </View>
 
         <TouchableOpacity style={styles.option}>
