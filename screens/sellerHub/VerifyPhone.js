@@ -1,5 +1,16 @@
 import React, { useState, useRef } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
+} from "react-native";
 import { auth, db, firebaseConfig } from "../../firebaseConfig";
 import { PhoneAuthProvider, linkWithCredential } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
@@ -76,51 +87,58 @@ export default function VerifyPhone() {
   };
 
   return (
-    <View style={styles.container}>
-      <FirebaseRecaptchaVerifierModal
-        ref={recaptchaVerifier}
-        firebaseConfig={firebaseConfig}
-      />
-
-      <Text style={styles.header}>Verify Phone</Text>
-
-      {step === 1 && (
-        <>
-          <Text style={styles.label}>US phone numbers only. No need to type +1.</Text>
-          <View style={styles.phoneRow}>
-            <View style={styles.prefixBox}>
-              <Text style={styles.prefix}>+1</Text>
-            </View>
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="555-555-5555"
-              keyboardType="phone-pad"
-              value={phone}
-              onChangeText={handlePhoneChange}
-              maxLength={12}
-            />
-          </View>
-          <TouchableOpacity style={styles.button} onPress={sendCode}>
-            <Text style={styles.buttonText}>Send Verification Code</Text>
-          </TouchableOpacity>
-        </>
-      )}
-
-      {step === 2 && (
-        <>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter verification code"
-            keyboardType="number-pad"
-            value={code}
-            onChangeText={setCode}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.container}>
+          <FirebaseRecaptchaVerifierModal
+            ref={recaptchaVerifier}
+            firebaseConfig={firebaseConfig}
           />
-          <TouchableOpacity style={styles.button} onPress={confirmCode}>
-            <Text style={styles.buttonText}>Confirm Code</Text>
-          </TouchableOpacity>
-        </>
-      )}
-    </View>
+
+          <Text style={styles.header}>Verify Phone</Text>
+
+          {step === 1 && (
+            <>
+              <Text style={styles.label}>US phone numbers only. No need to type +1.</Text>
+              <View style={styles.phoneRow}>
+                <View style={styles.prefixBox}>
+                  <Text style={styles.prefix}>+1</Text>
+                </View>
+                <TextInput
+                  style={[styles.input, { flex: 1 }]}
+                  placeholder="555-555-5555"
+                  keyboardType="phone-pad"
+                  value={phone}
+                  onChangeText={handlePhoneChange}
+                  maxLength={12}
+                />
+              </View>
+              <TouchableOpacity style={styles.button} onPress={sendCode}>
+                <Text style={styles.buttonText}>Send Verification Code</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter verification code"
+                keyboardType="number-pad"
+                value={code}
+                onChangeText={setCode}
+              />
+              <TouchableOpacity style={styles.button} onPress={confirmCode}>
+                <Text style={styles.buttonText}>Confirm Code</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -145,10 +145,10 @@ exports.createStripeAccountLink = onRequest({
 
       const accountLink = await stripe.accountLinks.create({
         account: stripeAccountId,
-        refresh_url: "https://example.com/cancel",
-        return_url: "https://example.com/success",
+        refresh_url: "https://roundtwo-cc793.web.app/onboarding-refresh.html",
+        return_url: "https://roundtwo-cc793.web.app/onboarding-complete.html",
         type: "account_onboarding",
-      });
+      });      
 
       if (!accountLink?.url || !accountLink.url.startsWith("http")) {
         throw new Error("Stripe did not return a valid onboarding link.");

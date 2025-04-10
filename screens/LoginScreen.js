@@ -1,6 +1,17 @@
 import React, { useState } from "react";
-import { View, TextInput, Button, Text, StyleSheet, ActivityIndicator } from "react-native";
+import {
+  TextInput,
+  Button,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+} from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { login } from "../authService";
+import { getFriendlyError } from "../utils/authUtils";
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
@@ -15,36 +26,56 @@ const LoginScreen = ({ navigation }) => {
 
     try {
       await login(email, password);
-      navigation.navigate("MainApp");
+      navigation.replace("MainApp");
     } catch (err) {
-      setError(err.message);
+      setError(getFriendlyError(err.code));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
-      <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
-      <TextInput style={styles.input} placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid
+        extraScrollHeight={20}
+      >
+        <Text style={styles.title}>Login</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {loading ? (
-        <ActivityIndicator size="small" />
-      ) : (
-        <Button title="Log In" onPress={handleLogin} disabled={loading} />
-      )}
+        {loading ? (
+          <ActivityIndicator size="small" />
+        ) : (
+          <Button title="Log In" onPress={handleLogin} disabled={loading} />
+        )}
 
-      <Text style={styles.link} onPress={() => navigation.navigate("Signup")}>
-        Don't have an account? Sign up.
-      </Text>
-    </View>
+        <Text style={styles.link} onPress={() => navigation.replace("Signup")}>
+          Don't have an account? Sign up.
+        </Text>
+      </KeyboardAwareScrollView>
+    </TouchableWithoutFeedback>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 16 },
+  container: { flexGrow: 1, justifyContent: "center", padding: 16 },
   input: { borderWidth: 1, borderColor: "#ccc", marginBottom: 16, padding: 8 },
   title: { fontSize: 24, fontWeight: "bold", marginBottom: 16 },
   error: { color: "red", marginBottom: 12 },

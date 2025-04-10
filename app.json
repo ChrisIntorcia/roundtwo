@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "roundtwo",
-    "slug": "roundtwo",
+    "name": "Plateful",
+    "slug": "Plateful",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/Plateful.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "roundtwo",
@@ -21,7 +21,8 @@
       "bundleIdentifier": "com.chrisintorcia.roundtwo",
       "infoPlist": {
         "NSCameraUsageDescription": "Allow this app to access your camera",
-        "NSMicrophoneUsageDescription": "Allow this app to access your microphone"
+        "NSMicrophoneUsageDescription": "Allow this app to access your microphone",
+        "NSLocationWhenInUseUsageDescription": "This app uses your location to autofill your shipping address."
       }
     },
     "android": {

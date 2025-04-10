@@ -6,23 +6,24 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  ScrollView,
   Image,
-  KeyboardAvoidingView,
+  Keyboard,
+  TouchableWithoutFeedback,
   Platform,
+  ScrollView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { getFirestore, collection, addDoc, Timestamp } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { getApp } from "firebase/app"; 
+import { getFirestore, collection, addDoc, Timestamp, doc, getDoc } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getApp } from 'firebase/app';
 import { auth } from '../firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
-import * as ImageManipulator from 'expo-image-manipulator'; 
-import { doc, getDoc } from 'firebase/firestore';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 const app = getApp();
 const db = getFirestore();
-const storage = getStorage(app, "gs://roundtwo-cc793.firebasestorage.app");
+const storage = getStorage(app, 'gs://roundtwo-cc793.firebasestorage.app');
 
 const CreateProduct = () => {
   const navigation = useNavigation();
@@ -64,13 +65,12 @@ const CreateProduct = () => {
     ) {
       return Alert.alert('Incomplete Fields', 'Please complete all required fields and add at least one photo.');
     }
-  
-    // Parse numeric fields safely
+
     const parsedFullPrice = parseFloat(fullPrice);
     const parsedGroupPrice = parseFloat(groupPrice);
     const parsedGroupAmount = parseInt(groupAmount);
     const parsedQuantity = parseInt(quantity);
-  
+
     if (
       isNaN(parsedFullPrice) ||
       isNaN(parsedGroupPrice) ||
@@ -79,13 +79,11 @@ const CreateProduct = () => {
     ) {
       return Alert.alert('Invalid Input', 'Please enter valid numbers for price, quantity, and group info.');
     }
-  
+
     try {
       const user = auth.currentUser;
-      if (!user) {
-        return Alert.alert('User not authenticated');
-      }
-  
+      if (!user) return Alert.alert('User not authenticated');
+
       const imageUrls = await Promise.all(
         photos.map(async (photo, index) => {
           const manipulated = await ImageManipulator.manipulateAsync(
@@ -93,7 +91,6 @@ const CreateProduct = () => {
             [{ resize: { width: 600 } }],
             { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
           );
-  
           const response = await fetch(manipulated.uri);
           const blob = await response.blob();
           const storageRef = ref(storage, `products/${user.uid}/${Date.now()}_${index}`);
@@ -101,10 +98,10 @@ const CreateProduct = () => {
           return getDownloadURL(storageRef);
         })
       );
+
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       const stripeAccountId = userDoc.data()?.stripeAccountId || null;
 
-  
       const productData = {
         sellerId: user.uid,
         title,
@@ -117,26 +114,30 @@ const CreateProduct = () => {
         currency: 'usd',
         images: imageUrls,
         createdAt: Timestamp.now(),
-        stripeAccountId, 
+        stripeAccountId,
       };
-  
+
       await addDoc(collection(db, 'users', user.uid, 'products'), productData);
       await addDoc(collection(db, 'products'), productData);
-  
-      Alert.alert(
-        'Published',
-        'Your product has been published successfully!',
-        [{ text: 'OK', onPress: () => navigation.navigate('MainApp', { screen: 'Home' }) }]
-      );
+
+      Alert.alert('Published', 'Your product has been published successfully!', [
+        { text: 'OK', onPress: () => navigation.navigate('MainApp', { screen: 'Home' }) },
+      ]);
     } catch (error) {
       console.error("Error publishing product:", error);
       Alert.alert('Error', 'There was an issue publishing your product.');
     }
   };
-  
+
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer} ref={scrollViewRef}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardAwareScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid
+        extraScrollHeight={20}
+      >
         <View style={styles.mediaSection}>
           <Text style={styles.sectionTitle}>Photos</Text>
           <Text style={styles.mediaNote}>Add up to 8 photos to showcase your product.</Text>
@@ -161,9 +162,11 @@ const CreateProduct = () => {
 
         <View style={styles.detailsSection}>
           <Text style={styles.sectionTitle}>Product Details</Text>
+
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Title *</Text>
-            <TextInput style={styles.input} placeholder="Enter title" value={title} onChangeText={setTitle} />
+            <TextInput style={styles.input} placeholder="Enter title" value={title} autoCapitalize="characters"
+            onChangeText={(text) => setTitle(text.toUpperCase())} />
           </View>
 
           <View style={styles.inputGroup}>
@@ -254,11 +257,9 @@ const CreateProduct = () => {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.notes}>
-          Complete all required fields to create a quality listing.
-        </Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <Text style={styles.notes}>Complete all required fields to create a quality listing.</Text>
+      </KeyboardAwareScrollView>
+    </TouchableWithoutFeedback>
   );
 };
 

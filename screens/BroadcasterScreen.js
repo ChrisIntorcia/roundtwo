@@ -30,6 +30,7 @@ import {
   RtcSurfaceView,
   VideoSourceType,
 } from 'react-native-agora';
+import { Ionicons } from '@expo/vector-icons';
 
 
 // Accent color for UI highlights (user can adjust if needed)
@@ -73,6 +74,7 @@ export default function BroadcasterScreen({ route, navigation }) {
   const [muted, setMuted] = useState(false);
   const flatListRef = useRef();
   const rtcEngineRef = useRef(null);
+  const [countdownSeconds, setCountdownSeconds] = useState(null);
 
   const auth = getAuth();
   const user = auth.currentUser;
@@ -127,7 +129,7 @@ export default function BroadcasterScreen({ route, navigation }) {
     if (!joined || !carouselTimer || products.length === 0) return;
 
     const interval = setInterval(async () => {
-      const nextIndex = (carouselIndex + 1) % products.length;
+      const nextIndex = (selectedIndex + 1) % products.length;
       const nextProduct = products[nextIndex];
     
       const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -144,11 +146,27 @@ export default function BroadcasterScreen({ route, navigation }) {
       }, { merge: true });
     
       setCarouselIndex(nextIndex);
-    }, carouselTimer);
+    }, carouselTimer *1000);
 
     return () => clearInterval(interval);
   }, [carouselTimer, joined, selectedIndex, products]);
 
+  useEffect(() => {
+    if (!countdownSeconds || countdownSeconds <= 0) return;
+  
+    const interval = setInterval(() => {
+      setCountdownSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  
+    return () => clearInterval(interval);
+  }, [countdownSeconds]);
+  
   const fetchProducts = () => {
     const q = query(collection(db, 'products'), where('sellerId', '==', user.uid));
     return onSnapshot(q, (snapshot) => {
@@ -194,7 +212,7 @@ export default function BroadcasterScreen({ route, navigation }) {
         canvas={{ uid: 0, sourceType: VideoSourceType.VideoSourceCamera }} 
       />
       
-      <Text style={styles.viewerCount}>👁️ {viewerCount} watching</Text>
+      <Text style={styles.viewerCount}>{viewerCount} watching</Text>
       
       <FlatList
         ref={flatListRef}
@@ -210,11 +228,11 @@ export default function BroadcasterScreen({ route, navigation }) {
       />
       
       <TouchableOpacity 
-        style={styles.optionsButton} 
-        onPress={() => setOptionsVisible(true)}
-      >
-        <Text style={styles.optionsButtonText}>⚙️ Options</Text>
-      </TouchableOpacity>
+  style={styles.optionsButton} 
+  onPress={() => setOptionsVisible(true)}
+>
+  <Ionicons name="settings-sharp" size={24} color="#fff" />
+</TouchableOpacity>
       
       <Modal visible={optionsVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -230,6 +248,7 @@ export default function BroadcasterScreen({ route, navigation }) {
                   key={i}
                   onPress={() => {
                     setCarouselTimer(val);
+                    setCountdownSeconds(val);
                     setOptionsVisible(false);
                   }}
                   style={[
@@ -252,7 +271,35 @@ export default function BroadcasterScreen({ route, navigation }) {
                 {muted ? '🔇 Unmute Mic' : '🎤 Mute Mic'}
               </Text>
             </TouchableOpacity>
-            
+            <TouchableOpacity 
+              onPress={() => {
+                Alert.alert(
+                  "End Stream?",
+                  "Are you sure you want to end your live stream?",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    { 
+                      text: "Yes, End", 
+                      style: "destructive",
+                      onPress: async () => {
+                        try {
+                          rtcEngineRef.current?.leaveChannel();
+                          rtcEngineRef.current?.release();
+                          await updateDoc(doc(db, 'livestreams', channelName), { isLive: false });
+                          navigation.replace('Home'); // 👈 Navigate home
+                        } catch (err) {
+                          console.error("Failed to end stream:", err);
+                        }
+                      }
+                    }
+                  ]
+                );
+              }} 
+              style={[styles.modalButtonPrimary, { backgroundColor: '#e53935' }]} // Red button
+            >
+              <Text style={styles.modalButtonTextPrimary}>🛑 End Live Stream</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity 
               onPress={() => setOptionsVisible(false)} 
               style={styles.modalButtonSecondary}
@@ -286,20 +333,12 @@ export default function BroadcasterScreen({ route, navigation }) {
         )}
         style={styles.carousel}
       />
+      {countdownSeconds > 0 && (
+  <View style={styles.countdownBadge}>
+    <Text style={styles.countdownText}>⏱ {countdownSeconds}s</Text>
+  </View>
+)}
       
-      {selectedProduct && (
-        <View style={styles.selectedProduct}>
-          <Text style={styles.selectedProductTitle}>
-            {selectedProduct.title}
-          </Text>
-          <Text style={styles.selectedProductPrice}>
-            ${selectedProduct.fullPrice}
-          </Text>
-          <Text style={styles.selectedProductQty}>
-            Qty: {selectedProduct.groupAmount}
-          </Text>
-        </View>
-      )}
     </View>
   );
 }
@@ -309,7 +348,7 @@ const styles = StyleSheet.create({
   video: { flex: 1 },
   viewerCount: {
     position: 'absolute',
-    top: 40,
+    top: 60,
     left: 20,
     color: '#fff',
     fontSize: 16,
@@ -345,11 +384,11 @@ const styles = StyleSheet.create({
   },
   optionsButton: {
     position: 'absolute',
-    top: 40,
+    top: 60,
     right: 20,
     backgroundColor: ACCENT_COLOR,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     borderRadius: 12,
     // Add elevation/shadow for a raised button effect
     shadowColor: '#000',
@@ -423,7 +462,7 @@ const styles = StyleSheet.create({
   },
   carousel: {
     position: 'absolute',
-    bottom: 110,
+    bottom: 30,
     paddingLeft: 10,
   },
   productCard: {
@@ -486,4 +525,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#aaa',
   },
+  countdownBadge: {
+    position: 'absolute',
+    top: 130,
+    right: 20,
+    backgroundColor: '#FFD700',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    zIndex: 999,
+    elevation: 4,
+  },
+  countdownText: {
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  
 });

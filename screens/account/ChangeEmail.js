@@ -1,15 +1,17 @@
 import React, { useState } from "react";
 import {
-  View,
   Text,
   TextInput,
   TouchableOpacity,
   Alert,
   StyleSheet,
+  Keyboard,
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
-import {
-  auth,
-} from "../../firebaseConfig";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { auth } from "../../firebaseConfig";
 import {
   EmailAuthProvider,
   reauthenticateWithCredential,
@@ -54,53 +56,61 @@ const ChangeEmail = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <CustomHeader showBack />
-      <View style={styles.content}>
-        <Text style={styles.title}>Change Email</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="New email"
-          placeholderTextColor="#888"
-          autoCapitalize="none"
-          keyboardType="email-address"
-          value={newEmail}
-          onChangeText={setNewEmail}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Current password"
-          placeholderTextColor="#888"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleChangeEmail}
-          disabled={loading}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={{ flex: 1 }}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAwareScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          enableOnAndroid
+          extraScrollHeight={20}
         >
-          <Text style={styles.buttonText}>
-            {loading ? "Updating..." : "Update Email"}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+          <CustomHeader showBack />
+          <Text style={styles.title}>Change Email</Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="New email"
+            placeholderTextColor="#888"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={newEmail}
+            onChangeText={setNewEmail}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Current password"
+            placeholderTextColor="#888"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleChangeEmail}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>
+              {loading ? "Updating..." : "Update Email"}
+            </Text>
+          </TouchableOpacity>
+        </KeyboardAwareScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#fff",
-    flex: 1,
-  },
-  content: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: 20,
+    paddingBottom: 40,
   },
   title: {
     color: "#222",

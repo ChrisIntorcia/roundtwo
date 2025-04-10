@@ -1,151 +1,168 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from "react";
 import {
-  View, Text, FlatList, StyleSheet,
-  TouchableOpacity, Alert, Animated, ActivityIndicator
-} from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
-import { getFirestore, collection, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
-import { auth } from '../../firebaseConfig';
-import { useNavigation } from '@react-navigation/native';
-import FastImage from 'react-native-fast-image';
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
+  Alert,
+  Dimensions,
+} from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
+import { db } from "../../firebaseConfig";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  deleteDoc,
+} from "firebase/firestore";
+import { AppContext } from "../../context/AppContext";
+import FastImage from "react-native-fast-image";
 
-const db = getFirestore();
+const SCREEN_WIDTH = Dimensions.get("window").width;
 
-export default function Inventory() {
+const Inventory = () => {
+  const { user } = useContext(AppContext);
   const [products, setProducts] = useState([]);
-  const [deletingId, setDeletingId] = useState(null); // track which product is being deleted
-  const navigation = useNavigation();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
-
-      const productsRef = collection(db, 'users', user.uid, 'products');
-      const unsubscribe = onSnapshot(productsRef, (snapshot) => {
-        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setProducts(items);
-      });
-
-      return () => unsubscribe();
-    };
-
-    fetchProducts();
-  }, []);
-
-  const handleDelete = async (productId) => {
-    const user = auth.currentUser;
     if (!user) return;
 
-    Alert.alert(
-      'Delete Product',
-      'Are you sure you want to delete this product?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setDeletingId(productId);
-              await deleteDoc(doc(db, 'users', user.uid, 'products', productId));
-            } catch (error) {
-              console.error('Delete failed:', error);
-            } finally {
-              setDeletingId(null);
-            }
-          },
-        },
-      ]
+    const q = query(
+      collection(db, "products"),
+      where("ownerId", "==", user.uid)
     );
-  };
 
-  const renderRightActions = (progress, dragX, productId) => {
-    const scale = dragX.interpolate({
-      inputRange: [-100, 0],
-      outputRange: [1, 0.7],
-      extrapolate: 'clamp',
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setProducts(data);
+      setLoading(false);
     });
 
-    return (
-      <TouchableOpacity
-        onPress={() => handleDelete(productId)}
-        style={styles.deleteButton}
-        disabled={deletingId !== null} // disable if deleting
-      >
-        {deletingId === productId ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Animated.Text style={[styles.deleteText, { transform: [{ scale }] }]}>
-            Delete
-          </Animated.Text>
-        )}
-      </TouchableOpacity>
-    );
+    return unsubscribe;
+  }, [user]);
+
+  const deleteProduct = async (productId) => {
+    try {
+      await deleteDoc(doc(db, "products", productId));
+      Alert.alert("Deleted", "Product has been removed.");
+    } catch (err) {
+      console.error("Failed to delete product", err);
+      Alert.alert("Error", "Failed to delete product.");
+    }
   };
+
+  const renderRightActions = (progress, dragX, productId) => (
+    <TouchableOpacity
+      onPress={() =>
+        Alert.alert("Confirm Delete", "Are you sure?", [
+          { text: "Cancel", style: "cancel" },
+          { text: "Delete", style: "destructive", onPress: () => deleteProduct(productId) },
+        ])
+      }
+      style={styles.deleteButton}
+    >
+      <Text style={styles.deleteText}>Delete</Text>
+    </TouchableOpacity>
+  );
 
   const renderItem = ({ item }) => (
     <Swipeable
-      renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id)}
+      friction={2}
+      overshootRight={false}
+      renderRightActions={(progress, dragX) =>
+        renderRightActions(progress, dragX, item.id)
+      }
     >
-      <TouchableOpacity
-        onPress={() => navigation.navigate('ProductDetailsScreen', { product: item })}
-        style={styles.card}
-      >
-        <FastImage
-  source={{ uri: item.images[0], priority: FastImage.priority.normal }}
-  style={styles.image}
-  resizeMode={FastImage.resizeMode.cover}
-/>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text>{item.fullPrice} USD</Text>
-      </TouchableOpacity>
+      <View style={styles.card}>
+        <FastImage source={{ uri: item.thumbnail }} style={styles.image} />
+        <View style={styles.info}>
+          <Text style={styles.name}>{item.title}</Text>
+          <Text style={styles.details}>${item.price}</Text>
+          <Text style={styles.details}>Quantity: {item.quantity}</Text>
+        </View>
+      </View>
     </Swipeable>
   );
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <FlatList
       data={products}
       keyExtractor={(item) => item.id}
       renderItem={renderItem}
-      contentContainerStyle={styles.list}
+      contentContainerStyle={styles.container}
+      ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
     />
   );
-}
+};
 
 const styles = StyleSheet.create({
-  list: {
-    padding: 16,
+  container: {
+    padding: 20,
+    backgroundColor: "#fff",
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
   },
   card: {
-    marginBottom: 16,
+    flexDirection: "row",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
     padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    elevation: 2,
+    alignItems: "center",
+    minHeight: 100,
   },
   image: {
-    width: '100%',
-    height: 150,
+    width: 80,
+    height: 80,
     borderRadius: 8,
+    marginRight: 16,
+    backgroundColor: "#ddd",
   },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 8,
+  info: {
+    flex: 1,
+  },
+  name: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#222",
+  },
+  details: {
+    fontSize: 14,
+    color: "#555",
+    marginTop: 4,
   },
   deleteButton: {
-    backgroundColor: '#ff3b30',
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    borderRadius: 10,
+    backgroundColor: "red",
+    justifyContent: "center",
+    alignItems: "flex-end",
     paddingHorizontal: 20,
-    marginBottom: 16,
-    height: '90%',
+    marginVertical: 5,
+    borderRadius: 12,
+    width: SCREEN_WIDTH * 0.3,
   },
   deleteText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
+    color: "#fff",
+    fontWeight: "bold",
   },
 });
+
+export default Inventory;

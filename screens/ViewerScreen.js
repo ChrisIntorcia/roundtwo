@@ -68,6 +68,8 @@ export default function ViewerScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const [broadcaster, setBroadcaster] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [countdownSeconds, setCountdownSeconds] = useState(null);
+  const swipeRef = useRef(null); 
 
   useEffect(() => {
     const startViewing = async () => {
@@ -174,6 +176,22 @@ export default function ViewerScreen({ route, navigation }) {
   
     return () => clearInterval(interval);
   }, []);    
+
+  useEffect(() => {
+    if (!countdownSeconds || countdownSeconds <= 0) return;
+  
+    const interval = setInterval(() => {
+      setCountdownSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  
+    return () => clearInterval(interval);
+  }, [countdownSeconds]);  
   
   useEffect(() => {
     const unsubProduct = onSnapshot(doc(db, 'livestreams', channel), (docSnap) => {
@@ -189,6 +207,7 @@ export default function ViewerScreen({ route, navigation }) {
             }
           });
         }
+        
         setCountdown(data.carouselCountdown || null);
       }
     });
@@ -259,19 +278,19 @@ export default function ViewerScreen({ route, navigation }) {
   const handleBuy = async () => {
     const user = auth.currentUser;
     if (!user || !selectedProduct) return;
-
+  
     try {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       const shipping = userDoc.data()?.shippingAddress;
       const hasCard = userDoc.data()?.hasSavedPaymentMethod;
-
+  
       if (!shipping || !hasCard) {
         return Alert.alert(
           'Missing Info',
           'You are required to have payment and shipping info to purchase this item.'
         );
       }
-
+  
       const res = await fetch('https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentIntent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -282,15 +301,15 @@ export default function ViewerScreen({ route, navigation }) {
           application_fee_amount: Math.round(selectedProduct.fullPrice * 100 * 0.1)
         }),
       });
-
+  
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Payment failed.');
       }
-
+  
       setShowConfetti(true);
       setPurchaseBanner(`${user.displayName || user.email} Purchase Complete! "${selectedProduct.title}"`);
-
+  
       await addDoc(collection(db, 'users', user.uid, 'purchases'), {
         productId: selectedProduct.id,
         title: selectedProduct.title,
@@ -299,14 +318,15 @@ export default function ViewerScreen({ route, navigation }) {
         channel,
         purchasedAt: new Date(),
       });
-
-// ✅ Fetch the stream document so we can get the stream title
-const streamDoc = await getDoc(doc(db, 'livestreams', channel));
-if (!streamDoc.exists()) {
-  throw new Error('Stream not found.');
-}
-const streamTitle = streamDoc.data()?.title || '';
-
+  
+      // ✅ Fetch the stream document so we can get the stream title
+      const streamDoc = await getDoc(doc(db, 'livestreams', channel));
+      if (!streamDoc.exists()) {
+        throw new Error('Stream not found.');
+      }
+      const streamTitle = streamDoc.data()?.title || '';
+  
+      // ✅ Add to global orders
       await addDoc(collection(db, 'orders'), {
         buyerId: user.uid,
         buyerEmail: user.email,
@@ -320,34 +340,37 @@ const streamTitle = streamDoc.data()?.title || '';
         fulfilled: false,
         purchasedAt: new Date(),
       });
-
-
-// 🔁 Update groupAmount in global and user-owned product docs
-const productId = selectedProduct.id;
-const newQty = selectedProduct.groupAmount - 1;
-
-const productRefGlobal = doc(db, 'products', productId);
-const productRefUser = doc(db, 'users', selectedProduct.sellerId, 'products', productId);
-
-await runTransaction(db, async (transaction) => {
-  const globalSnap = await transaction.get(productRefGlobal);
-  const userSnap = await transaction.get(productRefUser);
-
-  const currentQty = globalSnap.data()?.groupAmount;
-  if (currentQty === undefined || currentQty <= 0) {
-    throw new Error('Sold Out');
-  }
-
-  transaction.update(productRefGlobal, { groupAmount: currentQty - 1 });
-  transaction.update(productRefUser, { groupAmount: currentQty - 1 });
-});
+  
+      // 🔁 Update groupAmount in global and user-owned product docs
+      const productId = selectedProduct.id;
+      const newQty = selectedProduct.groupAmount - 1;
+  
+      const productRefGlobal = doc(db, 'products', productId);
+      const productRefUser = doc(db, 'users', selectedProduct.sellerId, 'products', productId);
+  
+      await runTransaction(db, async (transaction) => {
+        const globalSnap = await transaction.get(productRefGlobal);
+        const userSnap = await transaction.get(productRefUser);
+  
+        const currentQty = globalSnap.data()?.groupAmount;
+        if (currentQty === undefined || currentQty <= 0) {
+          throw new Error('Sold Out');
+        }
+  
+        transaction.update(productRefGlobal, { groupAmount: currentQty - 1 });
+        transaction.update(productRefUser, { groupAmount: currentQty - 1 });
+      });
+  
       setTimeout(() => {
         setShowConfetti(false);
         setPurchaseBanner(null);
       }, 3000);
+  
     } catch (err) {
-      console.error('🔥 handleBuy error:', err.message);
-      Alert.alert('Purchase Failed', err.message);
+      console.error("🔥 handleBuy error:", err.message);
+      Alert.alert("Purchase Failed", err.message);
+    } finally {
+      swipeRef.current?.reset(); // ✅ Reset the swipe button after success or failure
     }
   };
   
@@ -433,14 +456,15 @@ await runTransaction(db, async (transaction) => {
           <TouchableOpacity style={styles.customBtn}><Text>Custom</Text></TouchableOpacity>
           {selectedProduct?.groupAmount > 0 ? (
   <SwipeButton
-    containerStyles={{ flex: 1, marginLeft: 10 }}
-    height={40}
-    railBackgroundColor="#FFD700"
-    thumbIconBackgroundColor="#000"
-    title="Swipe to Buy"
-    titleColor="#000"
-    onSwipeSuccess={handleBuy}
-  />
+  containerStyles={{ flex: 1, marginLeft: 10 }}
+  height={40}
+  railBackgroundColor="#FFD700"
+  thumbIconBackgroundColor="#000"
+  title="Swipe to Buy"
+  titleColor="#000"
+  onSwipeSuccess={handleBuy}
+  resetAfterSuccess={true} // ✅ this auto-resets after swipe
+/>
 ) : (
   <View style={[styles.buyButton, { backgroundColor: '#aaa', marginLeft: 10 }]}> 
     <Text style={styles.buyText}>Sold Out</Text>
@@ -459,6 +483,11 @@ await runTransaction(db, async (transaction) => {
         )}
         <View style={{ height: insets.bottom + 20 }} />
       </Animated.View>
+      {countdownSeconds > 0 && (
+  <View style={styles.timerBox}>
+    <Text style={styles.timerText}>⏱ {countdownSeconds}s</Text>
+  </View>
+)}
     </View>
   );
 }

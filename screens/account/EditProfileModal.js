@@ -1,5 +1,4 @@
-// EditProfileModal.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -8,6 +7,11 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
+  ScrollView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import FastImage from 'react-native-fast-image';
@@ -19,10 +23,23 @@ import uuid from 'react-native-uuid';
 const storage = getStorage();
 const db = getFirestore();
 
-export default function EditProfileModal({ visible, onClose, currentAbout, currentAvatar, onSaved }) {
+export default function EditProfileModal({
+  visible,
+  onClose,
+  currentAbout,
+  currentAvatar,
+  onSaved,
+}) {
   const [avatarUrl, setAvatarUrl] = useState(currentAvatar);
   const [aboutMe, setAboutMe] = useState(currentAbout || '');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setAvatarUrl(currentAvatar);
+      setAboutMe(currentAbout || '');
+    }
+  }, [visible, currentAvatar, currentAbout]);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -32,9 +49,9 @@ export default function EditProfileModal({ visible, onClose, currentAbout, curre
       quality: 0.7,
     });
 
-    if (!result.cancelled) {
+    if (!result.cancelled && result.assets?.[0]?.uri) {
       setLoading(true);
-      const img = await fetch(result.uri);
+      const img = await fetch(result.assets[0].uri);
       const blob = await img.blob();
 
       const storageRef = ref(storage, `avatars/${auth.currentUser.uid}/${uuid.v4()}`);
@@ -59,36 +76,48 @@ export default function EditProfileModal({ visible, onClose, currentAbout, curre
 
   return (
     <Modal visible={visible} animationType="slide">
-      <View style={styles.container}>
-        <Text style={styles.title}>Edit Profile</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+            <Text style={styles.title}>Edit Profile</Text>
 
-        <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
-          {loading ? (
-            <ActivityIndicator />
-          ) : (
-            <FastImage source={{ uri: avatarUrl }} style={styles.avatar} resizeMode={FastImage.resizeMode.cover} />
-          )}
-          <Text style={styles.linkText}>Change Avatar</Text>
-        </TouchableOpacity>
+            <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
+              {loading ? (
+                <ActivityIndicator />
+              ) : (
+                <FastImage
+                  source={{ uri: avatarUrl }}
+                  style={styles.avatar}
+                  resizeMode={FastImage.resizeMode.cover}
+                />
+              )}
+              <Text style={styles.linkText}>Change Avatar</Text>
+            </TouchableOpacity>
 
-        <Text style={styles.label}>About Me</Text>
-        <TextInput
-          style={styles.input}
-          multiline
-          numberOfLines={4}
-          value={aboutMe}
-          onChangeText={setAboutMe}
-          placeholder="Tell us about yourself"
-        />
+            <Text style={styles.label}>About Me</Text>
+            <TextInput
+              style={styles.input}
+              multiline
+              numberOfLines={4}
+              value={aboutMe}
+              onChangeText={setAboutMe}
+              placeholder="Tell us about yourself"
+              placeholderTextColor="#888"
+            />
 
-        <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={loading}>
-          <Text style={styles.saveButtonText}>{loading ? 'Saving...' : 'Save Changes'}</Text>
-        </TouchableOpacity>
+            <TouchableOpacity onPress={handleSave} style={styles.saveButton} disabled={loading}>
+              <Text style={styles.saveButtonText}>{loading ? 'Saving...' : 'Save Changes'}</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
+            <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -98,7 +127,7 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
     backgroundColor: '#fff',
-    flex: 1,
+    flexGrow: 1,
   },
   title: {
     fontSize: 22,

@@ -1,10 +1,31 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TextInput, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  ActivityIndicator,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Platform,
+} from 'react-native';
 import { db } from '../../firebaseConfig';
-import { collection, query, where, onSnapshot, orderBy, updateDoc, doc } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  orderBy,
+  updateDoc,
+  doc,
+} from 'firebase/firestore';
 import { auth } from '../../firebaseConfig';
 import { AppContext } from '../../context/AppContext';
-import * as Print from 'expo-print'; // 🔥 added for packing slip
+import * as Print from 'expo-print';
 
 const Order = () => {
   const { user } = useContext(AppContext);
@@ -90,7 +111,10 @@ const Order = () => {
         </Text>
         <TouchableOpacity
           onPress={() => toggleFulfilled(item.id, item.fulfilled)}
-          style={[styles.toggleButton, item.fulfilled ? styles.fulfilled : styles.notFulfilled]}
+          style={[
+            styles.toggleButton,
+            item.fulfilled ? styles.fulfilled : styles.notFulfilled,
+          ]}
         >
           <Text style={styles.toggleText}>
             {item.fulfilled ? 'Unmark' : 'Mark Fulfilled'}
@@ -98,20 +122,16 @@ const Order = () => {
         </TouchableOpacity>
       </View>
       <Text style={styles.meta}>Buyer: {item.buyerEmail}</Text>
-            {item.shippingAddress && (
+      {item.shippingAddress && (
         <View style={styles.addressBox}>
-            <Text style={styles.meta}>Shipping Address:</Text>
-            <Text style={styles.addressLine}>
-            {item.shippingAddress.name}
-            </Text>
-            <Text style={styles.addressLine}>
-            {item.shippingAddress.street}
-            </Text>
-            <Text style={styles.addressLine}>
+          <Text style={styles.meta}>Shipping Address:</Text>
+          <Text style={styles.addressLine}>{item.shippingAddress.name}</Text>
+          <Text style={styles.addressLine}>{item.shippingAddress.street}</Text>
+          <Text style={styles.addressLine}>
             {item.shippingAddress.city}, {item.shippingAddress.state} {item.shippingAddress.zip}
-            </Text>
+          </Text>
         </View>
-        )}
+      )}
       <Text style={styles.meta}>Stream: {item.streamTitle || item.channel}</Text>
       <Text style={styles.meta}>Price: ${item.price}</Text>
       <Text style={styles.meta}>Date: {new Date(item.purchasedAt.toDate()).toLocaleString()}</Text>
@@ -139,35 +159,45 @@ const Order = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Search by product or buyer"
-        value={search}
-        onChangeText={setSearch}
-      />
-      <View style={styles.toggleRow}>
-        {['all', 'unfulfilled', 'fulfilled'].map((key) => (
-          <TouchableOpacity
-            key={key}
-            onPress={() => setFilter(key)}
-            style={[styles.filterButton, filter === key && styles.activeFilter]}
-          >
-            <Text style={styles.filterText}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      {filteredOrders.length === 0 ? (
-        <Text style={styles.noOrders}>No orders found</Text>
-      ) : (
-        <FlatList
-          data={filteredOrders}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.list}
-        />
-      )}
-    </View>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.container}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by product or buyer"
+            value={search}
+            onChangeText={setSearch}
+          />
+          <View style={styles.toggleRow}>
+            {['all', 'unfulfilled', 'fulfilled'].map((key) => (
+              <TouchableOpacity
+                key={key}
+                onPress={() => setFilter(key)}
+                style={[styles.filterButton, filter === key && styles.activeFilter]}
+              >
+                <Text style={styles.filterText}>
+                  {key.charAt(0).toUpperCase() + key.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {filteredOrders.length === 0 ? (
+            <Text style={styles.noOrders}>No orders found</Text>
+          ) : (
+            <FlatList
+              data={filteredOrders}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              contentContainerStyle={styles.list}
+              keyboardShouldPersistTaps="handled"
+            />
+          )}
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 

@@ -80,26 +80,26 @@ const TransactionsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     padding: 20,
-    backgroundColor: "#121212",
+    backgroundColor: "#fff",
   },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#121212",
+    backgroundColor: "#fff",
   },
   noTransactions: {
-    color: "#888",
+    color: "#555",
     fontSize: 16,
   },
   transactionItem: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: "#f5f5f5",
     padding: 15,
     borderRadius: 10,
     marginBottom: 15,
   },
   product: {
-    color: "white",
+    color: "#222",
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -108,10 +108,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   date: {
-    color: "#999",
+    color: "#444",
     fontSize: 14,
     marginTop: 5,
   },
 });
+
 
 export default TransactionsScreen;

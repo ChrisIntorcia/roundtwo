@@ -11,6 +11,8 @@ import {
   Platform,
   PermissionsAndroid,
   ActivityIndicator,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -23,7 +25,13 @@ import {
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { useNavigation } from '@react-navigation/native';
-import { createAgoraRtcEngine, ChannelProfileType, ClientRoleType, VideoSourceType } from 'react-native-agora';
+import {
+  createAgoraRtcEngine,
+  ChannelProfileType,
+  ClientRoleType,
+  VideoSourceType,
+} from 'react-native-agora';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 const APP_ID = '262ef45d2c514a5ebb129a836c4bff93';
 const TOKEN_SERVER_URL = 'https://us-central1-roundtwo-cc793.cloudfunctions.net/generateAgoraToken';
@@ -73,7 +81,7 @@ export default function PreStreamSetup() {
 
     if (!docSnapshot.exists()) {
       Alert.alert('Complete Bank Info', 'You need to set up your bank account before going live.', [
-        { text: 'Go to Payouts', onPress: () => navigation.navigate('PayoutScreen') },
+        { text: 'Go to Payouts', onPress: () => navigation.replace('PayoutScreen') },
         { text: 'Cancel', style: 'cancel' },
       ]);
       setIsLoading(false);
@@ -84,7 +92,7 @@ export default function PreStreamSetup() {
 
     if (!stripeAccountId) {
       Alert.alert('Complete Bank Info', 'You need to set up your bank account before going live.', [
-        { text: 'Go to Payouts', onPress: () => navigation.navigate('PayoutScreen') },
+        { text: 'Go to Payouts', onPress: () => navigation.replace('PayoutScreen') },
         { text: 'Cancel', style: 'cancel' },
       ]);
       setIsLoading(false);
@@ -150,14 +158,14 @@ export default function PreStreamSetup() {
       broadcasterUid: uid,
       firebaseUid: user.uid,
       thumbnailUrl,
-      title: streamTitle, 
+      title: streamTitle,
       viewers: 0,
       isLive: true,
       createdAt: serverTimestamp(),
     });
 
     setIsLoading(false);
-    navigation.navigate('BroadcasterScreen', {
+    navigation.replace('BroadcasterScreen', {
       channelName,
       broadcasterUid: uid,
       token,
@@ -165,49 +173,57 @@ export default function PreStreamSetup() {
   };
 
   return (
-    <View style={styles.safeArea}>
-      <CustomHeader title="Go Live Setup" showBack={true} />
-      <View style={styles.container}>
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Stream Title</Text>
-          <TextInput
-            placeholder="Enter stream title"
-            value={streamTitle}
-            onChangeText={setStreamTitle}
-            style={styles.input}
-          />
-          <Text style={styles.sectionTitle}>Thumbnail</Text>
-          <TouchableOpacity style={styles.actionButton} onPress={pickThumbnail} disabled={isLoading}>
-            <Text style={styles.buttonText}>Select Thumbnail</Text>
-          </TouchableOpacity>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.safeArea}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid
+        extraScrollHeight={20}
+      >
+        <CustomHeader title="Go Live Setup" showBack={true} />
+        <View style={styles.container}>
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Stream Title</Text>
+            <TextInput
+  placeholder="Enter stream title"
+  value={streamTitle}
+  autoCapitalize="characters"
+  onChangeText={(text) => setStreamTitle(text.toUpperCase())}
+  style={styles.input}
+/>
+            <Text style={styles.sectionTitle}>Thumbnail</Text>
+            <TouchableOpacity style={styles.actionButton} onPress={pickThumbnail} disabled={isLoading}>
+              <Text style={styles.buttonText}>Select Thumbnail</Text>
+            </TouchableOpacity>
 
-          {thumbnailLocalUri && (
-            <View style={styles.thumbnailWrapper}>
-              <Image source={{ uri: thumbnailLocalUri }} style={styles.thumbnailPreview} />
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => setThumbnailLocalUri(null)}
-              >
-                <Text style={styles.deleteButtonText}>×</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <TouchableOpacity style={styles.goLiveButton} onPress={startLiveStream} disabled={isLoading}>
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Start Live Stream</Text>
+            {thumbnailLocalUri && (
+              <View style={styles.thumbnailWrapper}>
+                <Image source={{ uri: thumbnailLocalUri }} style={styles.thumbnailPreview} />
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => setThumbnailLocalUri(null)}
+                >
+                  <Text style={styles.deleteButtonText}>×</Text>
+                </TouchableOpacity>
+              </View>
             )}
-          </TouchableOpacity>
+
+            <TouchableOpacity style={styles.goLiveButton} onPress={startLiveStream} disabled={isLoading}>
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Start Live Stream</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </View>
+      </KeyboardAwareScrollView>
+    </TouchableWithoutFeedback>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#f5f5f5' },
+  safeArea: { flexGrow: 1, backgroundColor: '#f5f5f5' },
   container: {
     flex: 1,
     padding: 16,
@@ -286,5 +302,5 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     marginBottom: 20,
-  }
+  },
 });

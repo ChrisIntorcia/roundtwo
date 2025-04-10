@@ -5,7 +5,12 @@ import {
   StyleSheet,
   Alert,
   TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Ionicons } from "@expo/vector-icons";
 import { useStripe } from "@stripe/stripe-react-native";
 import { useNavigation } from "@react-navigation/native";
@@ -26,9 +31,8 @@ export default function PaymentsShippingScreen() {
     }
 
     try {
-      // Replace this with a REST endpoint (Firebase onRequest) or a hardcoded test response
       const response = await fetch(
-        "https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentSheet",      
+        "https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentSheet",
         {
           method: "POST",
           headers: {
@@ -42,7 +46,8 @@ export default function PaymentsShippingScreen() {
         throw new Error("Failed to fetch setup intent");
       }
 
-      const { setupIntentClientSecret, ephemeralKey, customer } = await response.json();
+      const { setupIntentClientSecret, ephemeralKey, customer } =
+        await response.json();
 
       const { error: initError } = await initPaymentSheet({
         customerId: customer,
@@ -78,66 +83,74 @@ export default function PaymentsShippingScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <CustomHeader title="Payments & Shipping" showBack />
-      <View style={styles.innerContainer}>
-        <Text style={styles.subtext}>
-          This is required in order to place a bid, order or buy a product on a
-          livestream. We charge your card if a bid or offer is accepted.
-        </Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAwareScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          enableOnAndroid
+          extraScrollHeight={20}
+        >
+          <CustomHeader title="Payments & Shipping" showBack />
+          <Text style={styles.subtext}>
+            This is required in order to place a bid, order or buy a product on
+            a livestream. We charge your card if a bid or offer is accepted.
+          </Text>
 
-        <TouchableOpacity style={styles.section} onPress={openPaymentSheet}>
-          <Ionicons
-            name="card-outline"
-            size={24}
-            color="#444"
-            style={styles.icon}
-          />
-          <View>
-            <Text style={styles.sectionTitle}>Add Payment Method</Text>
-            <Text style={styles.sectionSubtitle}>
-              Please input your payment info.
-            </Text>
-          </View>
-          <Ionicons
-            name="create-outline"
-            size={20}
-            color="#444"
-            style={styles.editIcon}
-          />
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.section} onPress={openPaymentSheet}>
+            <Ionicons
+              name="card-outline"
+              size={24}
+              color="#444"
+              style={styles.icon}
+            />
+            <View>
+              <Text style={styles.sectionTitle}>Add Payment Method</Text>
+              <Text style={styles.sectionSubtitle}>
+                Please input your payment info.
+              </Text>
+            </View>
+            <Ionicons
+              name="create-outline"
+              size={20}
+              color="#444"
+              style={styles.editIcon}
+            />
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.section} onPress={openShippingSheet}>
-          <Ionicons
-            name="cube-outline"
-            size={24}
-            color="#444"
-            style={styles.icon}
-          />
-          <View>
-            <Text style={styles.sectionTitle}>Add Shipping Details</Text>
-            <Text style={styles.sectionSubtitle}>
-              Please input your shipping details.
-            </Text>
-          </View>
-          <Ionicons
-            name="create-outline"
-            size={20}
-            color="#444"
-            style={styles.editIcon}
-          />
-        </TouchableOpacity>
-      </View>
-    </View>
+          <TouchableOpacity style={styles.section} onPress={openShippingSheet}>
+            <Ionicons
+              name="cube-outline"
+              size={24}
+              color="#444"
+              style={styles.icon}
+            />
+            <View>
+              <Text style={styles.sectionTitle}>Add Shipping Details</Text>
+              <Text style={styles.sectionSubtitle}>
+                Please input your shipping details.
+              </Text>
+            </View>
+            <Ionicons
+              name="create-outline"
+              size={20}
+              color="#444"
+              style={styles.editIcon}
+            />
+          </TouchableOpacity>
+        </KeyboardAwareScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: "#fff",
-  },
-  innerContainer: {
+    flexGrow: 1,
     padding: 20,
   },
   subtext: {
