@@ -119,10 +119,10 @@ const AccountScreen = () => {
             >
               <Text style={styles.optionText}>Addresses</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.option}>
-              <Text style={styles.optionText}>Verified Buyer</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.option}>
+            <TouchableOpacity
+              style={styles.option}
+              onPress={() => navigation.navigate("Notifications")}
+            >
               <Text style={styles.optionText}>Notifications</Text>
             </TouchableOpacity>
             <TouchableOpacity

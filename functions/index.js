@@ -5,6 +5,7 @@ const { initializeApp } = require("firebase-admin/app");
 const cors = require("cors")({ origin: true });
 
 const STRIPE_SECRET_KEY = defineSecret("STRIPE_SECRET_KEY");
+const AGORA_APP_CERTIFICATE = defineSecret("AGORA_APP_CERTIFICATE");
 
 initializeApp();
 const db = getFirestore();
@@ -87,7 +88,7 @@ exports.getStripeBalance = onRequest({
       const userRef = db.collection("users").doc(uid);
       const userDoc = await userRef.get();
 
-      if (!userDoc.exists()) return res.status(404).json({ error: "User not found" });
+      if (!userDoc.exists) return res.status(404).json({ error: "User not found" });
 
       const stripeAccountId = userDoc.data().stripeAccountId;
 
@@ -129,7 +130,6 @@ exports.createStripeAccountLink = onRequest({
 
       let stripeAccountId = userDoc.exists && userDoc.data()?.stripeAccountId;
 
-      // 🔧 Create a new Stripe Express account if none exists
       if (!stripeAccountId) {
         const account = await stripe.accounts.create({
           type: "express",
@@ -139,13 +139,10 @@ exports.createStripeAccountLink = onRequest({
         });
 
         stripeAccountId = account.id;
-
-        // ✅ Save to Firestore
         await userRef.set({ stripeAccountId }, { merge: true });
         console.log(`✅ Created and saved stripeAccountId: ${stripeAccountId}`);
       }
 
-      // 🎯 Generate onboarding link
       const accountLink = await stripe.accountLinks.create({
         account: stripeAccountId,
         refresh_url: "https://example.com/cancel",
@@ -195,8 +192,7 @@ exports.verifyStripeStatus = onRequest({
   });
 });
 
-// ✅ Direct PaymentIntent with app fee
-// ✅ One-tap Checkout Flow (no payment sheet)
+// ✅ Create PaymentIntent (One-Tap)
 exports.createPaymentIntent = onRequest({
   secrets: [STRIPE_SECRET_KEY],
   timeoutSeconds: 60,
@@ -216,7 +212,6 @@ exports.createPaymentIntent = onRequest({
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      // Check for existing customer
       const customers = await stripe.customers.list({ email: buyerEmail });
       let customer = customers.data[0];
 
@@ -224,7 +219,6 @@ exports.createPaymentIntent = onRequest({
         customer = await stripe.customers.create({ email: buyerEmail });
       }
 
-      // Retrieve saved payment methods
       const paymentMethods = await stripe.paymentMethods.list({
         customer: customer.id,
         type: "card",
@@ -236,7 +230,6 @@ exports.createPaymentIntent = onRequest({
         return res.status(400).json({ error: "No saved payment method found." });
       }
 
-      // Create and confirm PaymentIntent immediately
       const paymentIntent = await stripe.paymentIntents.create({
         amount,
         currency: "usd",
@@ -257,9 +250,63 @@ exports.createPaymentIntent = onRequest({
     }
   });
 });
-// ✅ Generate Agora Token
-const AGORA_APP_CERTIFICATE = defineSecret("AGORA_APP_CERTIFICATE");
 
+// ✅ Check Stripe Verified
+exports.checkStripeVerified = onRequest({
+  secrets: [STRIPE_SECRET_KEY],
+}, async (req, res) => {
+  try {
+    const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
+    const { uid } = req.body;
+
+    if (!uid) return res.status(400).json({ error: "Missing UID" });
+
+    const userDoc = await db.collection("users").doc(uid).get();
+    const stripeAccountId = userDoc.data()?.stripeAccountId;
+
+    if (!stripeAccountId) return res.status(400).json({ error: "Missing Stripe account" });
+
+    const acct = await stripe.accounts.retrieve(stripeAccountId);
+    const verified = acct.details_submitted && acct.charges_enabled;
+
+    res.status(200).json({ verified });
+  } catch (err) {
+    console.error("❌ checkStripeVerified error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ Instant Payout
+exports.createInstantPayout = onRequest({
+  secrets: [STRIPE_SECRET_KEY],
+}, async (req, res) => {
+  try {
+    const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
+    const { uid } = req.body;
+
+    if (!uid) return res.status(400).json({ error: "Missing UID" });
+
+    const userDoc = await db.collection("users").doc(uid).get();
+    const stripeAccountId = userDoc.data()?.stripeAccountId;
+
+    if (!stripeAccountId) return res.status(400).json({ error: "Missing Stripe account" });
+
+    const payout = await stripe.payouts.create({
+      amount: 1000,
+      currency: "usd",
+      method: "instant",
+    }, {
+      stripeAccount: stripeAccountId,
+    });
+
+    res.status(200).json({ success: true, payout });
+  } catch (err) {
+    console.error("❌ createInstantPayout error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ Agora Token Generator
 exports.generateAgoraToken = onRequest({
   secrets: [AGORA_APP_CERTIFICATE],
 }, async (req, res) => {
@@ -271,20 +318,19 @@ exports.generateAgoraToken = onRequest({
     }
 
     const APP_ID = "262ef45d2c514a5ebb129a836c4bff93";
-    const APP_CERTIFICATE = AGORA_APP_CERTIFICATE.value(); // ✅ corrected here
+    const APP_CERTIFICATE = AGORA_APP_CERTIFICATE.value();
 
     const expirationTimeInSeconds = 3600;
     const currentTimestamp = Math.floor(Date.now() / 1000);
     const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
 
     const { RtcTokenBuilder, RtcRole } = require("agora-access-token");
-    console.log(`🧪 UID received: ${uid}, type: ${typeof uid}`);
 
     const token = RtcTokenBuilder.buildTokenWithUid(
       APP_ID,
       APP_CERTIFICATE,
       channelName,
-      parseInt(uid), // make sure uid is an integer
+      parseInt(uid),
       RtcRole.PUBLISHER,
       privilegeExpiredTs
     );
@@ -295,3 +341,22 @@ exports.generateAgoraToken = onRequest({
     res.status(500).json({ error: error.message });
   }
 });
+
+// ✅ Order Notification
+exports.sendOrderNotification = require("firebase-functions").firestore
+  .document("orders/{orderId}")
+  .onCreate(async (snap, context) => {
+    const order = snap.data();
+    const buyerId = order.buyerId;
+
+    if (!buyerId || !order.title) return;
+
+    const notification = {
+      message: `Your order for "${order.title}" was placed successfully.`,
+      timestamp: require("firebase-admin").firestore.FieldValue.serverTimestamp(),
+      type: "order",
+    };
+
+    await db.collection("users").doc(buyerId).collection("notifications").add(notification);
+    console.log(`🔔 Notification sent to ${buyerId}`);
+  });

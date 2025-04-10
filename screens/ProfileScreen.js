@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Image,
   FlatList,
+  Modal,
 } from 'react-native';
 import { auth } from '../firebaseConfig';
 import {
@@ -16,21 +17,27 @@ import {
   getDoc,
   setDoc,
   deleteDoc,
-  onSnapshot
+  onSnapshot,
 } from 'firebase/firestore';
+import FastImage from 'react-native-fast-image';
+import EditProfileModal from './account/EditProfileModal';
+
 
 export default function ProfileScreen({ navigation }) {
   const db = getFirestore();
   const user = auth.currentUser;
 
   const [username, setUsername] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [aboutMe, setAboutMe] = useState('');
   const [inventory, setInventory] = useState([]);
   const [activeTab, setActiveTab] = useState('shop');
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  const [showEditModal, setShowEditModal] = useState(false);
 
-  const profileUserId = user?.uid; // In future, this can be dynamic for other profiles
+  const profileUserId = user?.uid;
 
   useEffect(() => {
     if (!user) return;
@@ -38,7 +45,10 @@ export default function ProfileScreen({ navigation }) {
     const fetchUser = async () => {
       const docSnap = await getDoc(doc(db, 'users', profileUserId));
       if (docSnap.exists()) {
-        setUsername(docSnap.data().username || 'Unnamed User');
+        const data = docSnap.data();
+        setUsername(data.username || 'Unnamed User');
+        setAvatarUrl(data.avatarUrl);
+        setAboutMe(data.aboutMe || '');
       }
     };
 
@@ -63,7 +73,6 @@ export default function ProfileScreen({ navigation }) {
         setFollowingCount(snapshot.size);
       }
     );
-    
 
     fetchUser();
     fetchInventory();
@@ -86,7 +95,7 @@ export default function ProfileScreen({ navigation }) {
 
   const renderProduct = ({ item }) => (
     <View style={styles.productItem}>
-      <Image source={{ uri: item.images[0] }} style={styles.productImage} />
+      <FastImage source={{ uri: item.images[0], priority: FastImage.priority.normal }} style={styles.productImage} resizeMode={FastImage.resizeMode.cover} />
       <Text style={styles.productTitle}>{item.title}</Text>
     </View>
   );
@@ -97,15 +106,16 @@ export default function ProfileScreen({ navigation }) {
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={{ color: 'white', fontSize: 18 }}>{'<'} </Text>
         </TouchableOpacity>
-        <Image
-          source={require('../assets/nothing.png')}
-          style={styles.avatar}
-          resizeMode="cover"
-        />
+        {avatarUrl ? (
+          <FastImage source={{ uri: avatarUrl }} style={styles.avatar} resizeMode={FastImage.resizeMode.cover} />
+        ) : (
+          <Image source={require('../assets/nothing.png')} style={styles.avatar} resizeMode="cover" />
+        )}
         <Text style={styles.username}>{username}</Text>
+        {aboutMe ? <Text style={styles.aboutMe}>{aboutMe}</Text> : null}
         <Text style={styles.followerText}>
-  {followerCount} Followers • {followingCount} Following
-</Text>
+          {followerCount} Followers • {followingCount} Following
+        </Text>
         <View style={styles.buttonRow}>
           <TouchableOpacity style={styles.messageButton}><Text style={styles.buttonText}>Messages</Text></TouchableOpacity>
           {profileUserId !== user.uid ? (
@@ -116,7 +126,7 @@ export default function ProfileScreen({ navigation }) {
               <Text style={styles.buttonTextBlack}>{isFollowing ? 'Unfollow' : 'Follow'}</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.editButton}>
+            <TouchableOpacity style={styles.editButton} onPress={() => setShowEditModal(true)}>
               <Text style={styles.buttonTextBlack}>Edit Profile</Text>
             </TouchableOpacity>
           )}
@@ -147,6 +157,17 @@ export default function ProfileScreen({ navigation }) {
           <View style={styles.emptyState}><Text style={{ color: '#999' }}>No reviews yet</Text></View>
         )}
       </View>
+
+      <EditProfileModal
+        visible={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        currentAbout={aboutMe}
+        currentAvatar={avatarUrl}
+        onSaved={({ avatarUrl, aboutMe }) => {
+          setAvatarUrl(avatarUrl);
+          setAboutMe(aboutMe);
+        }}
+      />
     </View>
   );
 }
@@ -157,6 +178,7 @@ const styles = StyleSheet.create({
   backButton: { position: 'absolute', top: 60, left: 20 },
   avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#888', marginBottom: 8 },
   username: { fontWeight: 'bold', fontSize: 18, color: '#fff' },
+  aboutMe: { color: '#ccc', fontStyle: 'italic', marginTop: 4, marginHorizontal: 20, textAlign: 'center' },
   followerText: { color: '#aaa', marginTop: 4 },
   buttonRow: { flexDirection: 'row', marginTop: 12 },
   messageButton: { backgroundColor: 'black', borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, marginRight: 8, borderWidth: 1, borderColor: 'white' },

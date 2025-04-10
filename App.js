@@ -36,6 +36,7 @@ import VerifyIdentity from "./screens/sellerHub/VerifyIdentity";
 import PreStreamSetup from "./screens/PreStreamSetup";
 import BroadcasterScreen from "./screens/BroadcasterScreen";
 import Order from "./screens/sellerHub/Order";
+import Notifications from './screens/account/Notifications';
 
 import { AppProvider } from "./context/AppContext";
 import { auth } from "./firebaseConfig";
@@ -104,6 +105,7 @@ export default function App() {
               <Stack.Screen name="PreStreamSetup" component={PreStreamSetup} options={{ headerShown: false }} />
               <Stack.Screen name="BroadcasterScreen" component={BroadcasterScreen} options={{ headerShown: false }} />
               <Stack.Screen name="Order" component={Order} options={{ title: "Orders" }} />
+              <Stack.Screen name="Notifications" component={Notifications} />
             </Stack.Navigator>
           </NavigationContainer>
         </AppProvider>

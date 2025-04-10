@@ -49,36 +49,53 @@ const PayoutScreen = () => {
         try {
           const user = auth.currentUser;
           if (!user) return;
-
+      
           const userRef = doc(db, "users", user.uid);
           const userSnap = await getDoc(userRef);
-
+      
           if (userSnap.exists()) {
             const data = userSnap.data();
             setPhoneVerified(data.phoneVerified || false);
-            setStripeVerified(data.stripeVerified || false);
-
-            if (data.stripeVerified) {
-              const res = await fetch(
-                "https://us-central1-roundtwo-cc793.cloudfunctions.net/getStripeBalance",
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ uid: user.uid }),
-                }
-              );
-
-              const result = await res.json();
-
+            let isVerified = data.stripeVerified || false;
+      
+            // 🟡 Double-check with Stripe if not marked verified
+            if (!isVerified) {
+              const verifyRes = await fetch('https://us-central1-roundtwo-cc793.cloudfunctions.net/checkStripeVerified', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid: user.uid }),
+              });
+            
+              const { verified } = await verifyRes.json();
+            
+              if (verified) {
+                await updateDoc(userRef, { stripeVerified: true });
+                isVerified = true;
+              }
+            }
+            
+            setStripeVerified(isVerified);
+            
+            // ✅ Now fetch balance if verified
+            if (isVerified) {
+              const res = await fetch('https://us-central1-roundtwo-cc793.cloudfunctions.net/getStripeBalance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uid: user.uid }),
+              });
+            
               if (res.ok) {
+                const result = await res.json();
                 setBalance({
                   available: result.available / 100,
                   pending: result.pending / 100,
                 });
               } else {
-                setErrorMsg(result.error);
+                const text = await res.text();
+                console.error("❌ getStripeBalance failed:", text);
+                setErrorMsg("Failed to fetch Stripe balance. Please try again.");
               }
-            }
+            }            
           }
         } catch (err) {
           console.error("❌ Stripe Fetch Error:", err.message);
@@ -87,6 +104,7 @@ const PayoutScreen = () => {
           setLoading(false);
         }
       };
+      
 
       fetchSellerInfo();
     }, [])
@@ -146,22 +164,57 @@ const PayoutScreen = () => {
       </View>
 
       {stripeVerified && (
-        <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>Account Balance</Text>
-          <Text style={styles.balanceAmount}>
-            ${(balance.available + balance.pending).toFixed(2)}
-          </Text>
-          <View style={styles.detailsRow}>
-            <Text style={styles.detailText}>
-              ${balance.available.toFixed(2)} available for withdrawal
-            </Text>
-            <Text style={styles.detailText}>
-              ${balance.pending.toFixed(2)} pending clearance
-            </Text>
-          </View>
-        </View>
-      )}
+  <>
+    <View style={styles.balanceCard}>
+      <Text style={styles.balanceLabel}>Account Balance</Text>
+      <Text style={styles.balanceAmount}>
+        ${(balance.available + balance.pending).toFixed(2)}
+      </Text>
+      <Text style={styles.detailText}>
+        Estimated payout: {new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toDateString()}
+      </Text>
+      <View style={styles.detailsRow}>
+        <Text style={styles.detailText}>
+          ${balance.available.toFixed(2)} available for withdrawal
+        </Text>
+        <Text style={styles.detailText}>
+          ${balance.pending.toFixed(2)} pending clearance
+        </Text>
+      </View>
+    </View>
 
+    <TouchableOpacity
+      onPress={async () => {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        try {
+          const res = await fetch(
+            "https://us-central1-roundtwo-cc793.cloudfunctions.net/createInstantPayout",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ uid: user.uid }),
+            }
+          );
+
+          const data = await res.json();
+          if (res.ok) {
+            Alert.alert("✅ Payout Started", "Funds are being transferred to your bank.");
+          } else {
+            Alert.alert("Error", data.error || "Failed to create payout.");
+          }
+        } catch (err) {
+          console.error("❌ Withdraw error:", err.message);
+          Alert.alert("Withdraw Error", err.message);
+        }
+      }}
+      style={[styles.verifyButton, { backgroundColor: "#4EA1F3" }]}
+    >
+      <Text style={[styles.verifyText, { color: "#fff" }]}>Withdraw Now</Text>
+    </TouchableOpacity>
+  </>
+)}
       {errorMsg && (
         <Text style={{ color: "red", marginBottom: 20 }}>{errorMsg}</Text>
       )}
@@ -186,11 +239,11 @@ const PayoutScreen = () => {
 const styles = StyleSheet.create({
   container: {
     padding: 20,
-    backgroundColor: "#121212",
+    backgroundColor: "#FFFFFF",
     flexGrow: 1,
   },
   title: {
-    color: "white",
+    color: "#000",
     fontSize: 22,
     fontWeight: "bold",
     marginBottom: 10,
@@ -200,28 +253,28 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   tab: {
-    color: "gray",
+    color: "#888",
     fontSize: 16,
     marginRight: 20,
   },
   activeTab: {
-    color: "white",
+    color: "#000",
     borderBottomWidth: 2,
-    borderBottomColor: "white",
+    borderBottomColor: "#000",
   },
   balanceCard: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: "#F5F5F5",
     borderRadius: 10,
     padding: 15,
     marginBottom: 20,
   },
   balanceLabel: {
-    color: "#aaa",
+    color: "#666",
     fontSize: 14,
   },
   balanceAmount: {
     fontSize: 28,
-    color: "white",
+    color: "#000",
     fontWeight: "bold",
     marginVertical: 10,
   },
@@ -229,11 +282,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   detailText: {
-    color: "gray",
+    color: "#444",
     marginBottom: 5,
   },
   linkButton: {
-    backgroundColor: "#333",
+    backgroundColor: "#EAEAEA", // lighter button
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 10,
@@ -241,7 +294,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   linkButtonText: {
-    color: "#4EA1F3",
+    color: "#007AFF", // bright blue, iOS-style
     fontWeight: "bold",
     fontSize: 16,
   },
@@ -255,7 +308,8 @@ const styles = StyleSheet.create({
   verifyText: {
     fontWeight: "bold",
     fontSize: 16,
-  },
+    color: "#000", // black text on gold
+  },  
 });
 
 export default PayoutScreen;
