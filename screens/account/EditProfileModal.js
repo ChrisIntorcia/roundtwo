@@ -41,7 +41,8 @@ export default function EditProfileModal({
     }
   }, [visible, currentAvatar, currentAbout]);
 
-  const pickImage = async () => {
+const pickImage = async () => {
+  try {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -49,8 +50,9 @@ export default function EditProfileModal({
       quality: 0.7,
     });
 
-    if (!result.cancelled && result.assets?.[0]?.uri) {
+    if (!result.canceled && result.assets?.[0]?.uri) {
       setLoading(true);
+
       const img = await fetch(result.assets[0].uri);
       const blob = await img.blob();
 
@@ -59,16 +61,22 @@ export default function EditProfileModal({
       const downloadURL = await getDownloadURL(storageRef);
 
       setAvatarUrl(downloadURL);
-      setLoading(false);
     }
-  };
+  } catch (error) {
+    console.error('Image upload failed:', error);
+    alert('Failed to upload image. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSave = async () => {
     setLoading(true);
-    await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-      avatarUrl,
-      aboutMe,
-    });
+    const updates = {};
+    if (avatarUrl) updates.avatarUrl = avatarUrl;
+    if (aboutMe) updates.aboutMe = aboutMe;
+    
+    await updateDoc(doc(db, 'users', auth.currentUser.uid), updates);
     setLoading(false);
     onSaved({ avatarUrl, aboutMe });
     onClose();

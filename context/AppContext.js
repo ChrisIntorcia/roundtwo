@@ -9,8 +9,8 @@ export const AppContext = createContext();
 export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isSeller, setIsSeller] = useState(false);
-  const [ranchName, setRanchName] = useState("");
-  const [ranchLocation, setRanchLocation] = useState("");
+  const [vendorName, setRanchName] = useState("");
+  const [vendorLocation, setRanchLocation] = useState("");
 
   const becomeSeller = (name, location) => {
     setIsSeller(true);
@@ -19,8 +19,8 @@ export const AppProvider = ({ children }) => {
   };
 
   const checkIfSeller = async (uid) => {
-    if (!uid) {
-      console.warn("⚠️ checkIfSeller called with null UID");
+    if (!uid || !auth.currentUser || auth.currentUser.uid !== uid) {
+      console.warn("⚠️ Skipping checkIfSeller — invalid or signed-out UID");
       return;
     }
 
@@ -32,8 +32,8 @@ export const AppProvider = ({ children }) => {
         const data = userSnap.data();
         if (data.isSeller === true) {
           setIsSeller(true);
-          setRanchName(data.ranchName || "");
-          setRanchLocation(data.ranchLocation || "");
+          setRanchName(data.vendorName || "");
+          setRanchLocation(data.vendorLocation || "");
         } else {
           setIsSeller(false);
         }
@@ -71,8 +71,8 @@ export const AppProvider = ({ children }) => {
       value={{
         user,
         isSeller,
-        ranchName,
-        ranchLocation,
+        vendorName,
+        vendorLocation,
         setUser,
         becomeSeller,
         checkIfSeller,

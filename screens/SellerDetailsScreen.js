@@ -1,13 +1,14 @@
 import React, { useContext, useState, useEffect } from "react";
-import { View, Text, StyleSheet, TextInput, Button, Alert } from "react-native";
+import { View, Text, StyleSheet, TextInput, Button, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, ScrollView } from "react-native";
 import { AppContext } from "../context/AppContext";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
+import CustomHeader from "../components/CustomHeader";
 
 const SellerDetailsScreen = ({ navigation }) => {
   const { becomeSeller } = useContext(AppContext);
-  const [ranchName, setRanchName] = useState("");
-  const [ranchLocation, setRanchLocation] = useState("");
+  const [vendorName, setRanchName] = useState("");
+  const [vendorLocation, setRanchLocation] = useState("");
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -20,7 +21,7 @@ const SellerDetailsScreen = ({ navigation }) => {
   }, []);
 
   const handleSubmit = async () => {
-    if (ranchName.trim() === "" || ranchLocation.trim() === "") {
+    if (vendorName.trim() === "" || vendorLocation.trim() === "") {
       Alert.alert("Error", "Please fill in all fields.");
       return;
     }
@@ -40,14 +41,14 @@ const SellerDetailsScreen = ({ navigation }) => {
       const username = userData?.username || user.email.split('@')[0];
 
       console.log("Updating Firestore user document with:", {
-        ranchName,
-        ranchLocation,
+        vendorName,
+        vendorLocation,
         isSeller: true,
       });
 
       await setDoc(userRef, {
-        ranchName,
-        ranchLocation,
+        vendorName,
+        vendorLocation,
         isSeller: true
       }, { merge: true });
 
@@ -55,12 +56,12 @@ const SellerDetailsScreen = ({ navigation }) => {
         uid: user.uid,
         email: user.email,
         username,
-        ranchName,
-        ranchLocation
+        vendorName,
+        vendorLocation
       }, { merge: true });
 
       console.log("User successfully added to sellers collection.");
-      becomeSeller(ranchName, ranchLocation);
+      becomeSeller(vendorName, vendorLocation);
       Alert.alert("Success", "Your seller details have been saved!");
       navigation.navigate("MainApp", { screen: "Home" });
     } catch (error) {
@@ -70,29 +71,46 @@ const SellerDetailsScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Seller Details</Text>
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Ranch Name:</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter Ranch Name"
-          value={ranchName}
-          onChangeText={setRanchName}
-        />
-      </View>
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Ranch Location:</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter Ranch Location"
-          value={ranchLocation}
-          onChangeText={setRanchLocation}
-        />
-      </View>
-      <Button title="Submit" onPress={handleSubmit} />
+    <View style={{ flex: 1 }}>
+      <CustomHeader title="Seller Setup" showBack />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          <Text style={styles.title}>Seller Details</Text>
+  
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Vendor Name:</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter Vendor Name"
+              value={vendorName}
+              onChangeText={(text) =>
+                setRanchName(text.replace(/\b\w/g, (c) => c.toUpperCase()))
+              }
+            />
+          </View>
+  
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Vendor Location:</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter Vendor Location"
+              value={vendorLocation}
+              onChangeText={(text) =>
+                setRanchLocation(text.replace(/\b\w/g, (c) => c.toUpperCase()))
+              }
+            />
+          </View>
+  
+          <Button title="Submit" onPress={handleSubmit} />
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
     </View>
-  );
+  );  
 };
 
 const styles = StyleSheet.create({

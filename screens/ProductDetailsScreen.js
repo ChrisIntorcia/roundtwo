@@ -1,10 +1,43 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { View, Text, Image, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Alert } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
 const ProductDetailsScreen = ({ route }) => {
   const { product } = route.params;
+
+  const handleBuy = async (isBulk) => {
+    const quantity = isBulk ? product.bulkQuantity : 1;
+    const price = isBulk ? product.bulkPrice : product.fullPrice;
+  
+    // Call your Firebase Function to create a Stripe PaymentIntent
+    try {
+      const response = await fetch('https://your-cloud-function-url/createPaymentSheet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: product.id,
+          amount: price * 100, // in cents
+          quantity,
+          sellerId: product.sellerId,
+          type: isBulk ? 'bulk' : 'single',
+        }),
+      });
+  
+      const data = await response.json();
+      if (!data.paymentIntent) throw new Error('No PaymentIntent received');
+  
+      // Use your existing Stripe integration here to present the PaymentSheet
+      // For example:
+      // await initPaymentSheet({ ...data });
+      // await presentPaymentSheet();
+  
+      Alert.alert('Success', `Ready to pay $${price} for ${quantity} item(s).`);
+    } catch (error) {
+      console.error('Payment error:', error);
+      Alert.alert('Error', 'There was a problem processing your payment.');
+    }
+  };  
 
   return (
     <ScrollView style={styles.safeArea} showsVerticalScrollIndicator={false}>
@@ -12,22 +45,7 @@ const ProductDetailsScreen = ({ route }) => {
 
       <View style={styles.contentCard}>
         <Text style={styles.title}>{product.title}</Text>
-
-        <View style={styles.priceCard}>
-          <View style={styles.priceBox}>
-            <Text style={styles.priceLabel}>Full Price</Text>
-            <Text style={styles.priceValue}>${product.fullPrice}</Text>
-          </View>
-          <View style={styles.priceBox}>
-            <Text style={styles.priceLabel}>Group Price</Text>
-            <Text style={styles.priceValue}>${product.groupPrice}</Text>
-          </View>
-          <View style={styles.priceBox}>
-            <Text style={styles.priceLabel}>Group Amount</Text>
-            <Text style={styles.priceValue}>{product.groupAmount}</Text>
-          </View>
-        </View>
-
+        
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.description}>{product.description}</Text>
@@ -36,9 +54,19 @@ const ProductDetailsScreen = ({ route }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Seller Info</Text>
           <Text style={styles.sellerText}>
-            {product.ranchName} – {product.location}
+            {product.vendorName} – {product.location}
           </Text>
         </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Buy Options</Text>
+          <View style={styles.buttonGroup}>
+            <TouchableOpacity style={styles.buyButton} onPress={() => handleBuy(false)}>
+              <Text style={styles.buyButtonText}>Buy Now for ${product.fullPrice}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
       </View>
     </ScrollView>
   );
@@ -111,6 +139,28 @@ const styles = StyleSheet.create({
     color: '#444',
     fontWeight: '500',
   },
+
+  buttonGroup: { flexDirection: 'column', gap: 10 },
+  buyButton: {
+    backgroundColor: '#E76A54',
+    paddingVertical: 12,
+    borderRadius: 32,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  bulkBuyButton: {
+    backgroundColor: '#E76A54',
+    paddingVertical: 12,
+    borderRadius: 32,
+    alignItems: 'center',
+  },
+  buyButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+
 });
 
 export default ProductDetailsScreen;

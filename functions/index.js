@@ -208,6 +208,13 @@ exports.createPaymentIntent = onRequest({
       const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
       const { amount, stripeAccountId, buyerEmail, application_fee_amount } = req.body;
 
+      console.log("🧪 Received payment intent payload:", {
+        amount,
+        stripeAccountId,
+        buyerEmail,
+        application_fee_amount,
+      });
+
       if (!amount || !stripeAccountId || !buyerEmail) {
         return res.status(400).json({ error: "Missing required fields" });
       }
@@ -360,3 +367,91 @@ exports.sendOrderNotification = require("firebase-functions").firestore
     await db.collection("users").doc(buyerId).collection("notifications").add(notification);
     console.log(`🔔 Notification sent to ${buyerId}`);
   });
+
+  exports.createPaymentSheet = onRequest({
+    secrets: [STRIPE_SECRET_KEY],
+  }, async (req, res) => {
+    cors(req, res, async () => {
+      try {
+        const { customerEmail } = req.body;
+        console.log("🔁 createPaymentSheet for:", customerEmail);
+        
+        const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
+  
+        if (!customerEmail) {
+          return res.status(400).json({ error: "Missing customerEmail" });
+        }
+  
+        // 🔁 Find or create Stripe customer
+        const customers = await stripe.customers.list({ email: customerEmail });
+        const customer = customers.data[0] || await stripe.customers.create({ email: customerEmail });
+  
+        // 💳 Create SetupIntent to save card
+        const setupIntent = await stripe.setupIntents.create({ customer: customer.id });
+  
+        // 🔐 Create Ephemeral Key
+        const ephemeralKey = await stripe.ephemeralKeys.create(
+          { customer: customer.id },
+          { apiVersion: "2022-11-15" }
+        );
+  
+        // ✅ Send everything frontend needs
+        res.status(200).json({
+          setupIntentClientSecret: setupIntent.client_secret,
+          setupIntentId: setupIntent.id,
+          ephemeralKey: ephemeralKey.secret,
+          customer: customer.id,
+        });
+      } catch (err) {
+        console.error("❌ createPaymentSheet error:", err.message);
+        res.status(500).json({ error: err.message });
+      }
+    });
+  });  
+
+exports.savePaymentMethodDetails = onRequest({
+  secrets: [STRIPE_SECRET_KEY],
+}, async (req, res) => {
+  try {
+    const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
+    const { setupIntentId, uid } = req.body;
+
+    if (!setupIntentId || !uid) {
+      return res.status(400).json({ error: "Missing setupIntentId or uid" });
+    }
+
+    // Get setup intent to find attached payment method
+    const setupIntent = await stripe.setupIntents.retrieve(setupIntentId);
+    const paymentMethodId = setupIntent.payment_method;
+
+    if (!paymentMethodId) {
+      return res.status(404).json({ error: "No payment method attached" });
+    }
+
+    // Retrieve the payment method details
+    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+
+    const card = paymentMethod.card;
+    const name = paymentMethod.billing_details.name;
+
+    // Save to Firestore
+    const userRef = db.collection("users").doc(uid);
+    await userRef.set({
+      paymentMethod: {
+        card: {
+          brand: card.brand,
+          last4: card.last4,
+        },
+        billingDetails: {
+          name,
+        },
+      },
+    }, { merge: true });
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("❌ savePaymentMethodDetails error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+

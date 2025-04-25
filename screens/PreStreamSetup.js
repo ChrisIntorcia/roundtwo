@@ -151,9 +151,10 @@ export default function PreStreamSetup() {
     await engine.setupLocalVideo({ uid: 0, sourceType: VideoSourceType.VideoSourceCamera });
 
     const thumbnailUrl = await uploadThumbnail();
+    const userData = docSnapshot.data();
 
     await setDoc(doc(db, 'livestreams', user.uid), {
-      streamer: user.displayName || 'Streamer',
+      streamer: userData?.username || user.email.split('@')[0] || 'Streamer',
       channel: channelName,
       broadcasterUid: uid,
       firebaseUid: user.uid,
@@ -193,7 +194,7 @@ export default function PreStreamSetup() {
 />
             <Text style={styles.sectionTitle}>Thumbnail</Text>
             <TouchableOpacity style={styles.actionButton} onPress={pickThumbnail} disabled={isLoading}>
-              <Text style={styles.buttonText}>Select Thumbnail</Text>
+              <Text style={styles.thumbnailText}>Select Thumbnail</Text>
             </TouchableOpacity>
 
             {thumbnailLocalUri && (
@@ -245,17 +246,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   actionButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: '#EAEAEA',
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 10,
+    borderRadius: 32,
     alignItems: 'center',
     marginBottom: 20,
-  },
+  },  
   goLiveButton: {
-    backgroundColor: '#28a745',
+    backgroundColor: '#E76A54',
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 32,
     alignItems: 'center',
     marginTop: 10,
   },
@@ -303,4 +304,10 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 20,
   },
+  thumbnailText: {
+    color: '#E76A54',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
 });

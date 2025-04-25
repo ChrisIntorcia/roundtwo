@@ -113,10 +113,11 @@ const BottomTabs = ({ navigation }) => {
             options={{
               tabBarButton: (props) => (
                 <TouchableOpacity {...props} style={styles.sellButton} onPress={openBottomSheet}>
-                  <Ionicons name="add-circle" size={30} color="blue" />
+                  <Ionicons name="add-circle" size={30} color="#E76A54" />
+                  <Text style={styles.sellLabel}>Sell</Text>
                 </TouchableOpacity>
               ),
-              tabBarLabel: "",
+              tabBarLabel: "Sell",
             }}
           >
             {() => null}
@@ -132,9 +133,11 @@ const BottomTabs = ({ navigation }) => {
           <Animated.View style={[styles.bottomSheet, { transform: [{ translateY }] }]}>
             <ScrollView>
               <Text style={styles.modalTitle}>Complete Seller Setup</Text>
-              <Text style={styles.bulletPoint}> 🔹 <Text style={styles.boldText}>Sell in seconds</Text>: Go live instantly.</Text>
-              <Text style={styles.bulletPoint}> 🔹 <Text style={styles.boldText}>Low commission</Text>: Keep more of your earnings.</Text>
-              <Text style={styles.bulletPoint}> 🔹 <Text style={styles.boldText}>Engaged buyers</Text>: Livestream shoppers convert better.</Text>
+              <Text style={styles.bulletPoint}><Text style={styles.greenDot}>●</Text> <Text style={styles.boldText}>Earn More by Cutting Out the Store</Text>: Sell directly and keep the margins retailers take.</Text>
+              <Text style={styles.bulletPoint}><Text style={styles.greenDot}>●</Text> <Text style={styles.boldText}>Share the Margin</Text>: Lower prices for buyers while boosting your profit.</Text>
+              <Text style={styles.bulletPoint}><Text style={styles.greenDot}>●</Text> <Text style={styles.boldText}>Build Real Relationships</Text>: Go live, tell your story, and connect face-to-face.</Text>
+              <Text style={styles.bulletPoint}><Text style={styles.greenDot}>●</Text> <Text style={styles.boldText}>Educate, Entertain, and Sell</Text>: Demo, teach, and showcase your products live.</Text>
+
               <TouchableOpacity
                 style={styles.blueButton}
                 onPress={() => {
@@ -171,7 +174,7 @@ const BottomTabs = ({ navigation }) => {
                   rootNavigation.navigate("PreStreamSetup"); // ✅ fixed navigation to hide header
                 }}
               >
-                <Text style={styles.optionButtonText}>Schedule a Show</Text>
+                <Text style={styles.optionButtonText}>Start a Live Show</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.blueButton}
@@ -196,12 +199,13 @@ const BottomTabs = ({ navigation }) => {
 const styles = StyleSheet.create({
   sellButton: { justifyContent: "center", alignItems: "center", backgroundColor: "transparent" },
   modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0, 0, 0, 0.5)" },
-  bottomSheet: { width: "100%", backgroundColor: "white", borderRadius: 12, padding: 20, alignItems: "center", height: "40%" },
+  bottomSheet: { width: "100%", backgroundColor: "white", borderRadius: 12, padding: 20, alignItems: "center" },
   modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 15, textAlign: "center" },
-  blueButton: { width: "100%", backgroundColor: "blue", padding: 15, borderRadius: 10, marginVertical: 10, alignItems: "center" },
+  blueButton: { width: "100%", backgroundColor: "#E76A54", paddingVertical: 14, paddingHorizontal: 40, borderRadius: 32, marginVertical: 10, alignItems: "center" },
   optionButtonText: { color: "white", fontWeight: "bold", fontSize: 16 },
   bulletPoint: { marginVertical: 10, color: "#555", fontSize: 16 },
   boldText: { fontWeight: "bold" },
+  greenDot: { color: '#E76A54', fontSize: 12 },
 });
 
 export default BottomTabs;

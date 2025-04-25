@@ -9,6 +9,7 @@ import {
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
+  Alert,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -44,11 +45,15 @@ export default function ConfirmAddress() {
         },
         { merge: true }
       );
-      navigation.replace("AddressesScreen");
+      Alert.alert("✅ Address Saved", "Your shipping address has been added successfully.");
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "MainApp" }],
+      });
     } catch (err) {
       console.error("Failed to save address", err);
     }
-  };
+  };  
 
   return (
     <KeyboardAvoidingView
@@ -163,16 +168,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   button: {
-    backgroundColor: "#FFD700",
-    padding: 15,
-    borderRadius: 30,
+    marginTop: 12,
+    backgroundColor: "#E76A54",
+    paddingHorizontal: 40,
+    paddingVertical: 14,
+    borderRadius: 32,
     alignItems: "center",
-    marginTop: 10,
   },
   buttonText: {
-    fontWeight: "bold",
+    color: "#fff",
     fontSize: 16,
-    color: "#000",
+    fontWeight: "600",
   },
 });
 

@@ -15,6 +15,8 @@ import {
   Dimensions,
   StatusBar,
   Animated,
+  Share,
+  Modal
 } from 'react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -70,6 +72,10 @@ export default function ViewerScreen({ route, navigation }) {
   const [isFollowing, setIsFollowing] = useState(false);
   const [countdownSeconds, setCountdownSeconds] = useState(null);
   const swipeRef = useRef(null); 
+  const [purchaseQty, setPurchaseQty] = useState(1);
+  const [swipeKey, setSwipeKey] = useState(Date.now());
+  const [moreOptionsVisible, setMoreOptionsVisible] = useState(false);
+  const [muted, setMuted] = useState(false);
 
   useEffect(() => {
     const startViewing = async () => {
@@ -158,7 +164,7 @@ export default function ViewerScreen({ route, navigation }) {
           const firebaseUid = streamDoc.data()?.firebaseUid;
           if (!firebaseUid || typeof firebaseUid !== 'string') return;
       
-          const docRef = doc(db, 'sellers', firebaseUid);
+          const docRef = doc(db, 'users', firebaseUid);
           const userDoc = await getDoc(docRef);
           console.log('👤 Broadcaster Firestore data:', userDoc.data());
       
@@ -178,7 +184,7 @@ export default function ViewerScreen({ route, navigation }) {
   }, []);    
 
   useEffect(() => {
-    if (!countdownSeconds || countdownSeconds <= 0) return;
+    if (countdownSeconds === null || countdownSeconds <= 0) return;
   
     const interval = setInterval(() => {
       setCountdownSeconds((prev) => {
@@ -198,38 +204,50 @@ export default function ViewerScreen({ route, navigation }) {
       if (docSnap.exists()) {
         const data = docSnap.data(); // ✅ Fix: define data before using
         setSelectedProduct(data.selectedProduct || null);
+  
+        // 🔁 Watch global product for updates
         if (data.selectedProduct?.id) {
           const globalProductRef = doc(db, 'products', data.selectedProduct.id);
           onSnapshot(globalProductRef, (productSnap) => {
-            const qty = productSnap.data()?.groupAmount;
-            if (qty !== undefined) {
-              setSelectedProduct(prev => prev ? { ...prev, groupAmount: qty } : null);
+            const freshData = productSnap.data();
+            if (freshData) {
+              setSelectedProduct({ id: productSnap.id, ...freshData });
             }
-          });
+          });          
         }
-        
-        setCountdown(data.carouselCountdown || null);
+  
+        // ⏱ Update countdown
+        if (typeof data.carouselCountdown === 'number') {
+          setCountdownSeconds(data.carouselCountdown); // allow 0/null to clear the countdown
+        }
+  
+        // 🔴 Stream ended — boot viewer
+        if (data.isLive === false) {
+          Alert.alert("Stream Ended", "This stream has ended.", [
+            { text: "OK", onPress: () => navigation.replace('MainApp', { screen: 'Home' }) }
+          ]);
+        }        
       }
     });
-
+  
     const chatQuery = query(collection(db, 'livestreams', channel, 'messages'), orderBy('createdAt'));
     const unsubChat = onSnapshot(chatQuery, (snapshot) => {
       const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setMessages(msgs);
       flatListRef.current?.scrollToEnd({ animated: true });
     });
-
+  
     const unsubViewers = onSnapshot(collection(db, 'livestreams', channel, 'viewers'), (snapshot) => {
       setViewerCount(snapshot.size);
     });
-
+  
     return () => {
       unsubProduct();
       unsubChat();
       unsubViewers();
     };
   }, [channel]);
-
+  
   useEffect(() => {
     const checkFollowing = async () => {
       const currentUser = auth.currentUser;
@@ -247,33 +265,59 @@ export default function ViewerScreen({ route, navigation }) {
     const currentUser = auth.currentUser;
     if (!currentUser || !broadcaster?.id) return;
   
-    const followRef = doc(db, 'users', currentUser.uid, 'following', broadcaster.id);
+    const followingRef = doc(db, 'users', currentUser.uid, 'following', broadcaster.id);
+    const followerRef = doc(db, 'users', broadcaster.id, 'followers', currentUser.uid);
   
     try {
       if (isFollowing) {
-        await deleteDoc(followRef);
+        await deleteDoc(followingRef);
+        await deleteDoc(followerRef);
       } else {
-        await setDoc(followRef, {
+        await setDoc(followingRef, {
           followedAt: new Date(),
           username: broadcaster.username || '',
         });
+        await setDoc(followerRef, {
+          followedAt: new Date(),
+          username: currentUser.displayName || '',
+        });
       }
+  
       setIsFollowing(!isFollowing);
     } catch (err) {
       console.error('⚠️ Failed to toggle follow:', err);
+    }
+  };  
+
+  const handleShare = async () => {
+    try {
+      const url = `https://stogora.com/live/${channel}`; // replace with your actual link pattern
+      const message = `🎥 I'm watching a live stream on Stogora! Check it out: ${url}`;
+      await Share.share({ message, url });
+    } catch (error) {
+      console.error('Share error:', error);
+      Alert.alert('Oops', 'Failed to share the stream.');
     }
   };
   
   const sendMessage = async () => {
     const user = auth.currentUser;
     if (!chatInput.trim() || !user) return;
+  
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    const senderName =
+      userDoc.data()?.username ||
+      userDoc.data()?.displayName ||
+      user.email.split('@')[0];
+  
     await addDoc(collection(db, 'livestreams', channel, 'messages'), {
       text: chatInput,
-      sender: user.displayName || 'Viewer',
+      sender: senderName,
       createdAt: new Date(),
     });
+  
     setChatInput('');
-  };
+  };  
 
   const handleBuy = async () => {
     const user = auth.currentUser;
@@ -283,103 +327,109 @@ export default function ViewerScreen({ route, navigation }) {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       const shipping = userDoc.data()?.shippingAddress;
       const hasCard = userDoc.data()?.hasSavedPaymentMethod;
-  
+    
       if (!shipping || !hasCard) {
         return Alert.alert(
           'Missing Info',
           'You are required to have payment and shipping info to purchase this item.'
         );
       }
-  
+    
       const res = await fetch('https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentIntent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: Math.round(selectedProduct.fullPrice * 100),
+          amount: Math.round(selectedProduct.bulkPrice * 100 * purchaseQty),
           buyerEmail: user.email,
           stripeAccountId: selectedProduct.stripeAccountId,
-          application_fee_amount: Math.round(selectedProduct.fullPrice * 100 * 0.1)
+          application_fee_amount: Math.round(selectedProduct.bulkPrice * 100 * purchaseQty * 0.1),
         }),
       });
-  
+    
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Payment failed.');
       }
-  
+    
       setShowConfetti(true);
-      setPurchaseBanner(`${user.displayName || user.email} Purchase Complete! "${selectedProduct.title}"`);
-  
-      await addDoc(collection(db, 'users', user.uid, 'purchases'), {
-        productId: selectedProduct.id,
-        title: selectedProduct.title,
-        price: selectedProduct.fullPrice,
-        sellerId: selectedProduct.sellerId,
-        channel,
-        purchasedAt: new Date(),
-      });
-  
-      // ✅ Fetch the stream document so we can get the stream title
+      const buyerUsername =
+      userDoc.data()?.username ||
+      userDoc.data()?.displayName ||
+      user.email.split('@')[0];
+    
+    setPurchaseBanner(`${buyerUsername} Purchase Complete! "${selectedProduct.title}"`);
+    
+    await addDoc(collection(db, 'users', user.uid, 'purchases'), {
+      productId: selectedProduct.id,
+      title: selectedProduct.title,
+      price: selectedProduct.bulkPrice * purchaseQty,
+      quantity: purchaseQty,
+      sellerId: selectedProduct.sellerId,
+      channel,
+      purchasedAt: new Date(),
+    });
+    
       const streamDoc = await getDoc(doc(db, 'livestreams', channel));
       if (!streamDoc.exists()) {
         throw new Error('Stream not found.');
       }
       const streamTitle = streamDoc.data()?.title || '';
-  
-      // ✅ Add to global orders
+    
       await addDoc(collection(db, 'orders'), {
         buyerId: user.uid,
         buyerEmail: user.email,
         sellerId: selectedProduct.sellerId,
         productId: selectedProduct.id,
         title: selectedProduct.title,
-        price: selectedProduct.fullPrice,
-        shippingAddress: shipping, 
+        price: selectedProduct.bulkPrice * purchaseQty,
+        quantity: purchaseQty,
+        shippingAddress: shipping,
         channel,
         streamTitle,
         fulfilled: false,
         purchasedAt: new Date(),
       });
-  
-      // 🔁 Update groupAmount in global and user-owned product docs
+    
       const productId = selectedProduct.id;
-      const newQty = selectedProduct.groupAmount - 1;
-  
+      const newQty = selectedProduct.groupAmount - purchaseQty;
+    
       const productRefGlobal = doc(db, 'products', productId);
       const productRefUser = doc(db, 'users', selectedProduct.sellerId, 'products', productId);
-  
+    
       await runTransaction(db, async (transaction) => {
         const globalSnap = await transaction.get(productRefGlobal);
         const userSnap = await transaction.get(productRefUser);
-  
-        const currentQty = globalSnap.data()?.groupAmount;
-        if (currentQty === undefined || currentQty <= 0) {
-          throw new Error('Sold Out');
+      
+        const currentQty = globalSnap.data()?.quantity;
+        if (currentQty === undefined || currentQty < purchaseQty) {
+          throw new Error('Not enough stock');
         }
-  
-        transaction.update(productRefGlobal, { groupAmount: currentQty - 1 });
-        transaction.update(productRefUser, { groupAmount: currentQty - 1 });
+      
+        transaction.update(productRefGlobal, { quantity: currentQty - purchaseQty });
+      
+        if (userSnap.exists()) {
+          transaction.update(productRefUser, { quantity: currentQty - purchaseQty });
+        }
       });
-  
-      setTimeout(() => {
-        setShowConfetti(false);
-        setPurchaseBanner(null);
-      }, 3000);
-  
+      
     } catch (err) {
       console.error("🔥 handleBuy error:", err.message);
       Alert.alert("Purchase Failed", err.message);
     } finally {
-      swipeRef.current?.reset(); // ✅ Reset the swipe button after success or failure
+      swipeRef.current?.reset();
+    
+      setTimeout(() => {
+        setShowConfetti(false);
+        setPurchaseBanner(null);
+      }, 3000);
     }
-  };
-  
+  }
   const displayUid = remoteUid || broadcasterUidRef.current;
 
-  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: '#000' }} color="#FFD700" />;
+  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: '#000' }} color="#E76A54" />;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000', paddingBottom: 24 }}>
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
       {joined && displayUid ? (
         <RtcSurfaceView
@@ -393,42 +443,77 @@ export default function ViewerScreen({ route, navigation }) {
       )}
 
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonWrapper}>
-          <Icon name="chevron-back" size={20} color="#fff" />
-        </TouchableOpacity>
+      <View style={styles.headerRow}>
+  <View style={styles.leftRow}>
+    <Image
+      source={
+        broadcaster?.avatarUrl
+          ? { uri: broadcaster.avatarUrl }
+          : require('../assets/nothing.png')
+      }
+      style={styles.avatar}
+    />
+    <TouchableOpacity
+      onPress={() => {
+        if (broadcaster?.id) {
+          navigation.navigate('ProfileScreen', {
+            userId: broadcaster.id,
+            username: broadcaster.username,
+          });
+        }
+      }}
+    >
+      <Text style={styles.hostName}>@{broadcaster?.username || 'seller'}</Text>
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.follow} onPress={toggleFollow}>
+      <Text style={{ color: '#fff' }}>{isFollowing ? 'Following' : 'Follow'}</Text>
+    </TouchableOpacity>
+  </View>
 
-        <View style={styles.headerRow}>
-          <View style={styles.hostInfo}>
-            <Image source={{ uri: 'https://via.placeholder.com/40' }} style={styles.avatar} />
-            <Text style={styles.hostName}>@{broadcaster?.username || 'seller'}</Text>
-            <TouchableOpacity style={styles.follow} onPress={toggleFollow}>
-  <Text style={{ color: '#000' }}>{isFollowing ? 'Following' : 'Follow'}</Text>
-</TouchableOpacity>
-          </View>
+  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+    <View style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#E76A54',
+      borderRadius: 12,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      marginRight: 10,
+    }}>
+      <Icon name="stats-chart" size={16} color="#fff" style={{ marginRight: 6 }} />
+      <Text style={{ fontWeight: 'bold', color: '#fff' }}>{viewerCount}</Text>
+    </View>
 
-          <View style={styles.viewerInfo}>
-            <Icon name="stats-chart" size={16} color="#000" style={{ marginRight: 6 }} />
-            <Text style={styles.viewerCount}>{viewerCount}</Text>
-          </View>
-        </View>
+    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonWrapper}>
+      <Icon name="chevron-down" size={20} color="#fff" />
+    </TouchableOpacity>
+  </View>
+</View>
 
         <View style={styles.sideToolbar}>
-          <TouchableOpacity><Icon name="ellipsis-vertical" size={20} color="#fff" /></TouchableOpacity>
-          <TouchableOpacity><Icon name="rocket" size={20} color="#fff" /></TouchableOpacity>
-          <TouchableOpacity><Icon name="videocam" size={20} color="#fff" /></TouchableOpacity>
-          <TouchableOpacity><Icon name="share-social" size={20} color="#fff" /></TouchableOpacity>
-          <TouchableOpacity><Icon name="wallet" size={20} color="#fff" /></TouchableOpacity>
+          <TouchableOpacity onPress={() => setMoreOptionsVisible(true)}><Icon name="ellipsis-vertical" size={20} color="#fff" /></TouchableOpacity>
+          <TouchableOpacity onPress={handleShare}><Icon name="rocket" size={20} color="#fff" /></TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('PaymentsShipping')}><Icon name="wallet" size={20} color="#fff" /></TouchableOpacity>
         </View>
 
         <View style={[styles.chatOverlay, { bottom: 212 }]}>
-          <FlatList
-            ref={flatListRef}
-            data={messages.slice(-4)}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <Text style={{ color: '#fff' }}><Text style={{ fontWeight: 'bold' }}>{item.sender}: </Text>{item.text}</Text>
-            )}
-          />
+        <FlatList
+  ref={flatListRef}
+  data={messages.slice(-4)}
+  keyExtractor={(item) => item.id}
+  renderItem={({ item, index }) => {
+    const faded = messages.length > 4 && index === 0;
+    return (
+      <Text style={{ color: '#fff', opacity: faded ? 0.4 : 1 }}>
+        <Text style={{ fontWeight: 'bold' }}>{item.sender}: </Text>
+        {item.text}
+      </Text>
+    );
+  }}
+  onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+  onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+  style={styles.chatOverlay}
+/>
         </View>
 
         <View style={styles.chatInputWrapper}>
@@ -436,40 +521,78 @@ export default function ViewerScreen({ route, navigation }) {
           <TouchableOpacity onPress={sendMessage}><Text style={styles.sendButton}>Send</Text></TouchableOpacity>
         </View>
 
-        {selectedProduct && (
-          <View style={styles.productPanel}>
-            <Image source={{ uri: selectedProduct.images?.[0] }} style={styles.productImage} />
-            <View style={styles.productDetails}>
-              <Text style={styles.productTitle}>{selectedProduct.title}</Text>
-              <Text style={styles.productPrice}>${Number(selectedProduct.fullPrice || 0).toFixed(2)}</Text>
-              <Text style={styles.productMeta}>{selectedProduct.groupAmount} in stock</Text>
-            </View>
-            {countdown ? (
-  <View style={styles.timerBox}>
-    <Text style={styles.timerText}>⏱ Rotates every {countdown / 60 >= 1 ? `${countdown / 60} min` : `${countdown} sec`}</Text>
-  </View>
-) : null}
+        {selectedProduct ? (
+  <View style={styles.productPanel}>
+    <Image source={{ uri: selectedProduct.images?.[0] }} style={styles.productImage} />
+    <View style={styles.productDetails}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+        <Text style={{ color: '#999', fontSize: 12, textDecorationLine: 'line-through', marginRight: 6 }}>
+          ${Number(selectedProduct.fullPrice || 0).toFixed(2)}
+        </Text>
+        <Text style={styles.productPrice}>
+          ${Number(selectedProduct.bulkPrice || 0).toFixed(2)}
+        </Text>
+      </View>
+      <Text style={styles.productTitle}>{selectedProduct.title}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={styles.productMeta}>{selectedProduct.quantity} in stock</Text>
+        {countdownSeconds > 0 && (
+          <View style={styles.timerBox}>
+            <Text style={styles.timerText}>⏱ {countdownSeconds}s</Text>
           </View>
         )}
+      </View>
+    </View>
+  </View>
+) : (
+  <View style={[styles.productPanel, { justifyContent: 'center', alignItems: 'center' }]}>
+    <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center' }}>
+      🛍️ The next product is about to drop. Stick around or you might miss it.
+    </Text>
+  </View>
+)}
 
-        <View style={styles.bottomBar}>
-          <TouchableOpacity style={styles.customBtn}><Text>Custom</Text></TouchableOpacity>
-          {selectedProduct?.groupAmount > 0 ? (
+<View style={styles.bottomBar}>
+  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+  <TouchableOpacity style={styles.qtyButton} onPress={() => {
+  setPurchaseQty(prev => Math.max(1, prev - 1));
+}}>
+  <Text style={styles.qtyButtonText}>−</Text>
+</TouchableOpacity>
+
+<Text style={styles.qtyText}>{purchaseQty}</Text>
+
+<TouchableOpacity style={styles.qtyButton} onPress={() => {
+  if (selectedProduct && purchaseQty < selectedProduct.quantity) {
+    setPurchaseQty(prev => prev + 1);
+  }
+}}>
+  <Text style={styles.qtyButtonText}>+</Text>
+</TouchableOpacity>
+
+  </View>
+
+  {selectedProduct?.quantity > 0 ? (
   <SwipeButton
-  containerStyles={{ flex: 1, marginLeft: 10 }}
-  height={40}
-  railBackgroundColor="#FFD700"
-  thumbIconBackgroundColor="#000"
-  title="Swipe to Buy"
-  titleColor="#000"
-  onSwipeSuccess={handleBuy}
-  resetAfterSuccess={true} // ✅ this auto-resets after swipe
-/>
+    key={swipeKey}
+    containerStyles={{ flex: 1, marginLeft: 10 }}
+    height={40}
+    railBackgroundColor="#E76A54"
+    thumbIconBackgroundColor="#000"
+    title="Swipe to Buy"
+    titleColor="#fff"
+    onSwipeSuccess={async () => {
+      await handleBuy();
+      setSwipeKey(Date.now()); // 👈 Visually reset the button
+    }}
+    resetAfterSuccess={false} // 👈 disable auto-reset, we do it manually
+  />
 ) : (
   <View style={[styles.buyButton, { backgroundColor: '#aaa', marginLeft: 10 }]}> 
     <Text style={styles.buyText}>Sold Out</Text>
   </View>
 )}
+
         </View>
 
         {showConfetti && (
@@ -481,46 +604,70 @@ export default function ViewerScreen({ route, navigation }) {
             <Text style={styles.purchaseBannerText}>{purchaseBanner}</Text>
           </View>
         )}
-        <View style={{ height: insets.bottom + 20 }} />
+        <View style={{ height: insets.bottom}} />
       </Animated.View>
-      {countdownSeconds > 0 && (
-  <View style={styles.timerBox}>
-    <Text style={styles.timerText}>⏱ {countdownSeconds}s</Text>
-  </View>
-)}
+
+{/* Other components here... */}
+
+<Modal visible={moreOptionsVisible} transparent animationType="fade">
+  <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} onPress={() => setMoreOptionsVisible(false)}>
+    <View style={{ position: 'absolute', bottom: 80, right: 20, backgroundColor: '#1a1a1a', borderRadius: 12, padding: 16 }}>
+      <TouchableOpacity onPress={() => {
+        const engine = rtcEngineRef.current;
+        engine.muteAllRemoteAudioStreams(!muted);
+        setMuted(!muted);
+        setMoreOptionsVisible(false);
+      }}>
+        <Text style={{ color: '#fff', paddingVertical: 8 }}>{muted ? 'Unmute Stream' : 'Mute Stream'}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => {
+        setMoreOptionsVisible(false);
+        Alert.alert('Report Submitted', 'Thanks for reporting. We’ll take a look!');
+      }}>
+        <Text style={{ color: '#fff', paddingVertical: 8 }}>Report Stream</Text>
+      </TouchableOpacity>
     </View>
+  </TouchableOpacity>
+</Modal>
+
+</View> // 
   );
 }
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 10, position: 'absolute', top: 40, left: 0, right: 0, zIndex: 10 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10, paddingTop: 50 },
+  leftRow: { flexDirection: 'row', alignItems: 'center'},
   hostInfo: { flexDirection: 'row', alignItems: 'center' },
   avatar: { width: 40, height: 40, borderRadius: 20 },
   hostName: { color: '#fff', marginLeft: 1 },
-  follow: { backgroundColor: 'yellow', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 6 },
-  viewerInfo: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFD700', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4,marginRight: 30 },
-  viewerCount: { fontWeight: 'bold'},
+  follow: { backgroundColor: '#E76A54', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 6 },
+  viewerInfo: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E76A54', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4,marginRight: 30 },
+  viewerCount: { fontWeight: 'bold', color: '#fff'},
   sideToolbar: { position: 'absolute', right: 10, top: 200, gap: 14 },
   chatOverlay: { position: 'absolute', left: 10, right: 10, maxHeight: '30%', paddingHorizontal: 5 },
   chatInputWrapper: { position: 'absolute', bottom: 140, left: 10, right: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: '#1c1c1c', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 30 },
   chatInput: { flex: 1, color: '#fff', fontSize: 14, paddingVertical: 4 },
-  sendButton: { color: '#FFD700', fontWeight: 'bold', marginLeft: 8 },
+  sendButton: { color: 'white', fontWeight: 'bold', marginLeft: 8 },
   productPanel: { position: 'absolute', bottom: 60, left: 10, right: 10, backgroundColor: '#1a1a1a', borderRadius: 12, flexDirection: 'row', alignItems: 'center', padding: 12, marginBottom: 20 },
   productImage: { width: 60, height: 60, borderRadius: 8, marginRight: 10 },
   productDetails: { flex: 1 },
   productTitle: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
   productPrice: { color: '#fff', fontSize: 13, marginTop: 2 },
   productMeta: { color: '#ccc', fontSize: 11, marginTop: 2 },
-  buyButton: { backgroundColor: '#FFD700', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
+  buyButton: { backgroundColor: '#E76A54', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
   buyText: { color: '#000', fontWeight: 'bold' },
   bottomBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', position: 'absolute', bottom: 24, left: 0, right: 0, paddingHorizontal: 10, },
   customBtn: { backgroundColor: '#fff', padding: 10, borderRadius: 8 },
-  bidBtn: { backgroundColor: '#FFD700', padding: 10, borderRadius: 8 },
+  bidBtn: { backgroundColor: '#E76A54', padding: 10, borderRadius: 8 },
   shopIcon: { backgroundColor: '#fff', padding: 10, borderRadius: 20 },
   purchaseBanner: { position: 'absolute', top: 200, alignSelf: 'center', backgroundColor: '#222', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20 },
-  purchaseBannerText: { color: '#FFD700', fontSize: 14, fontWeight: 'bold' },
-  backButtonWrapper: { position: 'absolute', top: 50, right: 5, zIndex: 30, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 20, padding: 6 },
+  purchaseBannerText: { color: '#E76A54', fontSize: 14, fontWeight: 'bold' },
+  backButtonWrapper: { backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 20, padding: 6 },
   waitingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   waitingText: { color: '#fff', fontSize: 18 },
-  timerBox: { backgroundColor: '#FFD700', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, marginLeft: 10,}, timerText: {color: '#000', fontWeight: 'bold', fontSize: 13},
+  timerBox: { backgroundColor: '#E76A54', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, marginLeft: 10,}, timerText: {color: '#000', fontWeight: 'bold', fontSize: 13},
+  qtyButton: { backgroundColor: '#E76A54', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginHorizontal: 6 },
+  qtyButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+  qtyText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });

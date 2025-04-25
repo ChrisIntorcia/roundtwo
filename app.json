@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Plateful",
-    "slug": "Plateful",
+    "slug": "roundtwo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/Plateful.png",
@@ -50,6 +50,7 @@
       "eas": {
         "projectId": "34bce288-d064-41c4-aa79-25891d1be285"
       }
-    }
+    },
+    "owner": "chrisintorcia"
   }
 }

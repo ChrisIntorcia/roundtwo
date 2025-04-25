@@ -45,21 +45,21 @@ const SellerHub = () => {
 </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.option}>
-          <Text style={styles.optionText}>Affiliate Program: Earn Cash</Text>
-        </TouchableOpacity>
+        <TouchableOpacity style={styles.option} onPress={() => navigation.navigate("AffiliateProgram")}>
+  <Text style={styles.optionText}>Affiliate Program: Earn Cash</Text>
+</TouchableOpacity>
         <TouchableOpacity style={styles.option}>
           <Text style={styles.optionText}>Offers</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.option}>
-          <Text style={styles.optionText}>Premier Shop</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.option}>
-          <Text style={styles.optionText}>Shipping</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.option}>
-          <Text style={styles.optionText}>Seller Status</Text>
-        </TouchableOpacity>
+        <TouchableOpacity
+  style={styles.option}
+  onPress={() => navigation.navigate("Shipping")}
+>
+  <Text style={styles.optionText}>Shipping</Text>
+</TouchableOpacity>
+<TouchableOpacity style={styles.option} onPress={() => navigation.navigate("CottageLaws")}>
+  <Text style={styles.optionText}>Cottage Food and Farmers Markets</Text>
+</TouchableOpacity>
 
         <View style={styles.lastOption}></View>
       </ScrollView>

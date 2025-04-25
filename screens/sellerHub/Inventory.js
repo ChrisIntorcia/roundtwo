@@ -21,21 +21,25 @@ import {
 } from "firebase/firestore";
 import { AppContext } from "../../context/AppContext";
 import FastImage from "react-native-fast-image";
+import CustomHeader from "../../components/CustomHeader";
+import { useNavigation } from "@react-navigation/native";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 const Inventory = () => {
   const { user } = useContext(AppContext);
+  const navigation = useNavigation();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      console.log("❌ No user in context");
+      setLoading(false);
+      return;
+    }
 
-    const q = query(
-      collection(db, "products"),
-      where("ownerId", "==", user.uid)
-    );
+    const q = query(collection(db, "products"), where("sellerId", "==", user.uid))
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((doc) => ({
@@ -44,27 +48,30 @@ const Inventory = () => {
       }));
       setProducts(data);
       setLoading(false);
+      console.log("✅ Products fetched:", data.length);
     });
 
     return unsubscribe;
   }, [user]);
 
-  const deleteProduct = async (productId) => {
+  const deleteProduct = async (product) => {
     try {
-      await deleteDoc(doc(db, "products", productId));
+      await deleteDoc(doc(db, "products", product.id));
+  
       Alert.alert("Deleted", "Product has been removed.");
     } catch (err) {
       console.error("Failed to delete product", err);
       Alert.alert("Error", "Failed to delete product.");
     }
   };
+  
 
-  const renderRightActions = (progress, dragX, productId) => (
+  const renderRightActions = (progress, dragX, product) => (
     <TouchableOpacity
       onPress={() =>
         Alert.alert("Confirm Delete", "Are you sure?", [
           { text: "Cancel", style: "cancel" },
-          { text: "Delete", style: "destructive", onPress: () => deleteProduct(productId) },
+          { text: "Delete", style: "destructive", onPress: () => deleteProduct(product) },
         ])
       }
       style={styles.deleteButton}
@@ -78,15 +85,23 @@ const Inventory = () => {
       friction={2}
       overshootRight={false}
       renderRightActions={(progress, dragX) =>
-        renderRightActions(progress, dragX, item.id)
+        renderRightActions(progress, dragX, item)
       }
     >
       <View style={styles.card}>
-        <FastImage source={{ uri: item.thumbnail }} style={styles.image} />
+        <FastImage
+          source={
+            item.images?.[0]
+              ? { uri: item.images[0], priority: FastImage.priority.normal }
+              : { uri: "https://via.placeholder.com/80" }
+          }
+          style={styles.image}
+          resizeMode={FastImage.resizeMode.cover}
+        />
         <View style={styles.info}>
-          <Text style={styles.name}>{item.title}</Text>
-          <Text style={styles.details}>${item.price}</Text>
-          <Text style={styles.details}>Quantity: {item.quantity}</Text>
+          <Text style={styles.name}>{item.title || "Untitled"}</Text>
+          <Text style={styles.details}>${item.fullPrice?.toFixed(2) || "0.00"}</Text>
+          <Text style={styles.details}>Quantity: {item.quantity || 0}</Text>
         </View>
       </View>
     </Swipeable>
@@ -100,14 +115,31 @@ const Inventory = () => {
     );
   }
 
+  if (!user) {
+    return (
+      <View style={styles.centered}>
+        <Text style={{ color: "#888", fontSize: 16 }}>You must be signed in to view your inventory.</Text>
+      </View>
+    );
+  }
+
   return (
-    <FlatList
-      data={products}
-      keyExtractor={(item) => item.id}
-      renderItem={renderItem}
-      contentContainerStyle={styles.container}
-      ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-    />
+    <View style={{ flex: 1 }}>
+      <CustomHeader title="My Inventory" showBack onBack={() => navigation.goBack()} />
+      {products.length === 0 ? (
+        <View style={styles.centered}>
+          <Text style={{ color: "#888", fontSize: 16 }}>No products found.</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={products}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.container}
+          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+        />
+      )}
+    </View>
   );
 };
 

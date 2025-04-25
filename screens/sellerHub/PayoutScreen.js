@@ -12,6 +12,7 @@ import {
 import { auth } from "../../firebaseConfig";
 import { doc, getDoc, getFirestore, updateDoc } from "firebase/firestore";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import CustomHeader from "../../components/CustomHeader";
 
 const PayoutScreen = () => {
   const [balance, setBalance] = useState({ available: 0, pending: 0 });
@@ -153,6 +154,8 @@ const PayoutScreen = () => {
   }
 
   return (
+    <>
+    <CustomHeader title="Payouts" showBack />
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Finances</Text>
 
@@ -184,35 +187,36 @@ const PayoutScreen = () => {
     </View>
 
     <TouchableOpacity
-      onPress={async () => {
-        const user = auth.currentUser;
-        if (!user) return;
+  style={[styles.verifyButton, { backgroundColor: "#E76A54" }]}
+  onPress={async () => {
+    const user = auth.currentUser;
+    if (!user) return;
 
-        try {
-          const res = await fetch(
-            "https://us-central1-roundtwo-cc793.cloudfunctions.net/createInstantPayout",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ uid: user.uid }),
-            }
-          );
-
-          const data = await res.json();
-          if (res.ok) {
-            Alert.alert("✅ Payout Started", "Funds are being transferred to your bank.");
-          } else {
-            Alert.alert("Error", data.error || "Failed to create payout.");
-          }
-        } catch (err) {
-          console.error("❌ Withdraw error:", err.message);
-          Alert.alert("Withdraw Error", err.message);
+    try {
+      const res = await fetch(
+        "https://us-central1-roundtwo-cc793.cloudfunctions.net/createInstantPayout",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uid: user.uid }),
         }
-      }}
-      style={[styles.verifyButton, { backgroundColor: "#4EA1F3" }]}
-    >
-      <Text style={[styles.verifyText, { color: "#fff" }]}>Withdraw Now</Text>
-    </TouchableOpacity>
+      );
+
+      const data = await res.json();
+      if (res.ok) {
+        Alert.alert("✅ Payout Started", "Funds are being transferred to your bank.");
+      } else {
+        Alert.alert("Error", data.error || "Failed to create payout.");
+      }
+    } catch (err) {
+      console.error("❌ Withdraw error:", err.message);
+      Alert.alert("Withdraw Error", err.message);
+    }
+  }}
+>
+  <Text style={[styles.verifyText, { color: "#fff" }]}>Withdraw Now</Text>
+</TouchableOpacity>
+
   </>
 )}
       {errorMsg && (
@@ -233,6 +237,7 @@ const PayoutScreen = () => {
         </TouchableOpacity>
       )}
     </ScrollView>
+    </>
   );
 };
 
@@ -294,7 +299,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   linkButtonText: {
-    color: "#007AFF", // bright blue, iOS-style
+    color: "#E76A54",
     fontWeight: "bold",
     fontSize: 16,
   },

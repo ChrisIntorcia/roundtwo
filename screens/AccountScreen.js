@@ -104,8 +104,11 @@ const AccountScreen = () => {
               <Text style={styles.cardTitle}>My Rewards</Text>
               <Text style={styles.cardSubtitle}>View Coupons</Text>
             </View>
-            <TouchableOpacity style={styles.option}>
-              <Text style={styles.optionText}>Affiliate Program: Earn Cash</Text>
+            <TouchableOpacity
+              style={styles.option}
+              onPress={() => navigation.navigate("InboxScreen")}
+            >
+              <Text style={styles.optionText}>Messages</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.option}

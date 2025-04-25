@@ -26,6 +26,8 @@ import {
 import { auth } from '../../firebaseConfig';
 import { AppContext } from '../../context/AppContext';
 import * as Print from 'expo-print';
+import { useNavigation } from '@react-navigation/native';
+
 
 const Order = () => {
   const { user } = useContext(AppContext);
@@ -33,6 +35,7 @@ const Order = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
+  const navigation = useNavigation();
 
   useEffect(() => {
     if (!user) return;
@@ -62,11 +65,6 @@ const Order = () => {
       fulfilled: !currentStatus,
       fulfilledAt: !currentStatus ? new Date() : null,
     });
-  };
-
-  const updateTrackingNumber = async (orderId, trackingNumber) => {
-    const ref = doc(db, 'orders', orderId);
-    await updateDoc(ref, { trackingNumber });
   };
 
   const generatePackingSlip = async (order) => {
@@ -103,52 +101,62 @@ const Order = () => {
       order.buyerEmail.toLowerCase().includes(search.toLowerCase())
     );
 
-  const renderItem = ({ item }) => (
-    <View style={styles.orderCard}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>
-          {item.title} {item.fulfilled ? '✅' : ''}
-        </Text>
-        <TouchableOpacity
-          onPress={() => toggleFulfilled(item.id, item.fulfilled)}
-          style={[
-            styles.toggleButton,
-            item.fulfilled ? styles.fulfilled : styles.notFulfilled,
-          ]}
-        >
-          <Text style={styles.toggleText}>
-            {item.fulfilled ? 'Unmark' : 'Mark Fulfilled'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-      <Text style={styles.meta}>Buyer: {item.buyerEmail}</Text>
-      {item.shippingAddress && (
-        <View style={styles.addressBox}>
-          <Text style={styles.meta}>Shipping Address:</Text>
-          <Text style={styles.addressLine}>{item.shippingAddress.name}</Text>
-          <Text style={styles.addressLine}>{item.shippingAddress.street}</Text>
-          <Text style={styles.addressLine}>
-            {item.shippingAddress.city}, {item.shippingAddress.state} {item.shippingAddress.zip}
-          </Text>
+    const renderItem = ({ item }) => {
+    
+      return (
+        <View style={styles.orderCard}>
+          <View style={styles.headerRow}>
+            <Text style={styles.title}>
+              {item.title} {item.fulfilled ? '✅' : ''}
+            </Text>
+            <TouchableOpacity
+              onPress={() => toggleFulfilled(item.id, item.fulfilled)}
+              style={[
+                styles.toggleButton,
+                item.fulfilled ? styles.fulfilled : styles.notFulfilled,
+              ]}
+            >
+              <Text style={styles.toggleText}>
+                {item.fulfilled ? 'Unmark' : 'Mark Fulfilled'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+    
+          <Text style={styles.meta}>Buyer: {item.buyerEmail}</Text>
+          {item.shippingAddress && (
+            <View style={styles.addressBox}>
+              <Text style={styles.meta}>Shipping Address:</Text>
+              <Text style={styles.addressLine}>{item.shippingAddress.name}</Text>
+              <Text style={styles.addressLine}>{item.shippingAddress.street}</Text>
+              <Text style={styles.addressLine}>
+                {item.shippingAddress.city}, {item.shippingAddress.state} {item.shippingAddress.zip}
+              </Text>
+            </View>
+          )}
+          <Text style={styles.meta}>Stream: {item.streamTitle || item.channel}</Text>
+          <Text style={styles.meta}>Price: ${item.price}</Text>
+          <Text style={styles.meta}>Date: {new Date(item.purchasedAt.toDate()).toLocaleString()}</Text>
+          {item.fulfilledAt && (
+            <Text style={styles.meta}>Fulfilled: {new Date(item.fulfilledAt.toDate()).toLocaleString()}</Text>
+          )}
+    
+          <TouchableOpacity onPress={() => generatePackingSlip(item)}>
+            <Text style={styles.link}>Print Packing Slip</Text>
+          </TouchableOpacity>
+    
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate('ShippingLabelScreen', {
+                orderId: item.id,
+                buyerId: item.buyerId,
+              })
+            }
+          >
+            <Text style={styles.link}>Manage Shipping Label</Text>
+          </TouchableOpacity>
         </View>
-      )}
-      <Text style={styles.meta}>Stream: {item.streamTitle || item.channel}</Text>
-      <Text style={styles.meta}>Price: ${item.price}</Text>
-      <Text style={styles.meta}>Date: {new Date(item.purchasedAt.toDate()).toLocaleString()}</Text>
-      {item.fulfilledAt && (
-        <Text style={styles.meta}>Fulfilled: {new Date(item.fulfilledAt.toDate()).toLocaleString()}</Text>
-      )}
-      <TextInput
-        style={styles.trackingInput}
-        placeholder="Tracking Number"
-        value={item.trackingNumber || ''}
-        onChangeText={(text) => updateTrackingNumber(item.id, text)}
-      />
-      <TouchableOpacity onPress={() => generatePackingSlip(item)}>
-        <Text style={styles.link}>🖨️ Print Packing Slip</Text>
-      </TouchableOpacity>
-    </View>
-  );
+      );
+    };
 
   if (loading) {
     return (
@@ -265,13 +273,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 12,
   },
-  trackingInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 6,
-    borderRadius: 6,
-    marginTop: 8,
-  },
   link: {
     marginTop: 8,
     color: '#007bff',
@@ -291,6 +292,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#444',
   },
+  link: {
+    marginTop: 8,
+    color: '#007bff',
+    textDecorationLine: 'underline',
+    fontSize: 14,
+  },
+  
   
 });
 

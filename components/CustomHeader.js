@@ -18,7 +18,7 @@ const CustomHeader = ({ title, children, showBack = false }) => {
     <View style={[styles.headerContainer, { paddingTop: topPadding }]}>
       <View style={styles.inner}>
         {showBack && (
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => navigation.canGoBack() && navigation.goBack()}>
             <Ionicons name="chevron-back" size={24} color="#222" />
           </TouchableOpacity>
         )}

@@ -4,9 +4,13 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StripeProvider } from "@stripe/stripe-react-native";
+import 'react-native-reanimated';
 import * as Linking from "expo-linking";
+import MessagesScreen from "./screens/account/MessagesScreen";
+import InboxScreen from "./screens/account/InboxScreen";
 
 // Screens
+import OnboardingScreen from "./components/OnboardingScreen";
 import GoLiveScreen from "./screens/GoLiveScreen";
 import LoginScreen from "./screens/LoginScreen";
 import SignupScreen from "./screens/SignupScreen";
@@ -37,6 +41,7 @@ import PreStreamSetup from "./screens/PreStreamSetup";
 import BroadcasterScreen from "./screens/BroadcasterScreen";
 import Order from "./screens/sellerHub/Order";
 import Notifications from './screens/account/Notifications';
+import ShippingLabelScreen from "./screens/sellerHub/ShippingLabelScreen";
 
 import { AppProvider } from "./context/AppContext";
 import { auth } from "./firebaseConfig";
@@ -75,12 +80,20 @@ export default function App() {
       >
         <AppProvider>
           <NavigationContainer linking={linking}>
-            <Stack.Navigator>
-              <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
-              <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <Stack.Navigator
+            screenOptions={{
+              headerTintColor: "#E76A54", // ✅ green back arrow
+              headerTitleStyle: {
+                color: "#222", // ✅ dark title (match your design)
+                fontWeight: "bold",
+              },
+            }} >
+              <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false , gestureEnabled: false }} />
+              <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false , gestureEnabled: false }} />
               <Stack.Screen name="MainApp" component={BottomTabs} options={{ headerShown: false }} />
-              <Stack.Screen name="SellerDetailsScreen" component={SellerDetailsScreen} />
-              <Stack.Screen name="CreateProductScreen" component={CreateProductScreen} />
+              <Stack.Screen name="SellerDetailsScreen" component={SellerDetailsScreen} options={{ headerShown: false }}  />
+              <Stack.Screen name="CreateProductScreen" component={CreateProductScreen} options={{ headerShown: false }}/>
               <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ headerShown: false }} />
               <Stack.Screen name="BrowseScreen" component={BrowseScreen} options={{ headerShown: false}} />
               <Stack.Screen name="ProductDetailsScreen" component={ProductDetailsScreen} options={{ title: "Product Details" }} />
@@ -88,24 +101,30 @@ export default function App() {
               <Stack.Screen name="Account" component={AccountScreen} options={{ title: "Account" }} />
               <Stack.Screen name="SellerHub" component={SellerHub} options={{ title: "Seller Hub" }} />
               <Stack.Screen name="GoLiveScreen" component={GoLiveScreen} options={{headerShown: false}} />
-              <Stack.Screen name="ViewerScreen" component={ViewerScreen} options={{headerShown: false}} />
-              <Stack.Screen name="Inventory" component={Inventory} options={{ title: "My Inventory" }} />
-              <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{ title: "Profile" }} />
+              <Stack.Screen name="ViewerScreen" component={ViewerScreen} options={{headerShown: false, gestureEnabled: false}} />
+              <Stack.Screen name="Inventory" component={Inventory} options={{ title: "My Inventory", headerShown: false }} />
+              <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{ title: "Profile" , headerShown: false  }} />
               <Stack.Screen name="PaymentsShipping" component={PaymentsShipping} options={{ headerShown: false }} />
               <Stack.Screen name="AddShippingAddress" component={AddShippingAddress} options={{ title: "Add Shipping Address", presentation: "modal" }} />
               <Stack.Screen name="ConfirmAddress" component={ConfirmAddress} options={{ title: "Confirm Address", presentation: "modal" }} />
-              <Stack.Screen name="AddressesScreen" component={AddressesScreen} options={{ headerShown: false  }} />
-              <Stack.Screen name="PayoutScreen" component={PayoutScreen} options={{ title: "Payouts" }} />
+              <Stack.Screen name="AddressesScreen" component={AddressesScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="PayoutScreen" component={PayoutScreen} options={{ headerShown: false }} />
               <Stack.Screen name="Transactions" component={TransactionsScreen} />
               <Stack.Screen name="SellerVerificationScreen" component={SellerVerificationScreen} options={{ title: "Verify Seller" }} />
-              <Stack.Screen name="ChangePassword" component={ChangePassword} options={{ headerShown: false }} />
               <Stack.Screen name="ChangeEmail" component={ChangeEmail} options={{ headerShown: false }} />
+              <Stack.Screen name="ChangePassword" component={ChangePassword} options={{ headerShown: false }} />
               <Stack.Screen name="VerifyPhone" component={VerifyPhone} options={{ presentation: "modal", headerShown: false }} />
               <Stack.Screen name="VerifyIdentity" component={VerifyIdentity} options={{ title: "Verify Identity" }} />
               <Stack.Screen name="PreStreamSetup" component={PreStreamSetup} options={{ headerShown: false }} />
-              <Stack.Screen name="BroadcasterScreen" component={BroadcasterScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="BroadcasterScreen" component={BroadcasterScreen} options={{ headerShown: false , gestureEnabled: false }} />
               <Stack.Screen name="Order" component={Order} options={{ title: "Orders" }} />
               <Stack.Screen name="Notifications" component={Notifications} />
+              <Stack.Screen name="MessagesScreen" component={MessagesScreen} options={({ route }) => ({ title: route.params?.otherUsername || "Chat" })} />
+              <Stack.Screen name="InboxScreen" component={InboxScreen} options={{ title: "Inbox" }} /> 
+              <Stack.Screen name="ShippingLabelScreen" component={ShippingLabelScreen} options={{ title: "Shipping Label" }} />
+              <Stack.Screen name="Shipping" component={require('./screens/sellerHub/Shipping').default} options={{ headerShown: false }} />
+              <Stack.Screen name="AffiliateProgram" component={require('./screens/sellerHub/AffiliateProgram').default} options={{ headerShown: false }} />
+              <Stack.Screen name="CottageLaws" component={require('./screens/sellerHub/CottageLaws').default} options={{ headerShown: false }} />
             </Stack.Navigator>
           </NavigationContainer>
         </AppProvider>

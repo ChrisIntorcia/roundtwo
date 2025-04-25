@@ -8,6 +8,8 @@ import {
   FlatList,
   Modal,
 } from 'react-native';
+import { useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { auth } from '../firebaseConfig';
 import {
   getFirestore,
@@ -18,14 +20,18 @@ import {
   setDoc,
   deleteDoc,
   onSnapshot,
+  query, 
+  where,
 } from 'firebase/firestore';
 import FastImage from 'react-native-fast-image';
 import EditProfileModal from './account/EditProfileModal';
+import CustomHeader from '../components/CustomHeader';
 
 
-export default function ProfileScreen({ navigation }) {
+export default function ProfileScreen() {
   const db = getFirestore();
   const user = auth.currentUser;
+  const navigation = useNavigation();
 
   const [username, setUsername] = useState('');
   const [avatarUrl, setAvatarUrl] = useState(null);
@@ -37,10 +43,11 @@ export default function ProfileScreen({ navigation }) {
   const [followingCount, setFollowingCount] = useState(0);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  const profileUserId = user?.uid;
+  const route = useRoute();
+  const profileUserId = route.params?.userId || user?.uid;
 
   useEffect(() => {
-    if (!user) return;
+    if (!profileUserId) return;
 
     const fetchUser = async () => {
       const docSnap = await getDoc(doc(db, 'users', profileUserId));
@@ -53,8 +60,8 @@ export default function ProfileScreen({ navigation }) {
     };
 
     const fetchInventory = async () => {
-      const productsRef = collection(db, 'users', profileUserId, 'products');
-      const snapshot = await getDocs(productsRef);
+      const productsRef = query(collection(db, 'products'), where('sellerId', '==', profileUserId))
+      const snapshot = await getDocs(productsRef);      
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setInventory(items);
     };
@@ -85,13 +92,27 @@ export default function ProfileScreen({ navigation }) {
 
   const handleFollowToggle = async () => {
     const followerRef = doc(db, 'users', profileUserId, 'followers', user.uid);
-
-    if (isFollowing) {
-      await deleteDoc(followerRef);
-    } else {
-      await setDoc(followerRef, { followedAt: new Date() });
+    const followingRef = doc(db, 'users', user.uid, 'following', profileUserId);
+  
+    try {
+      if (isFollowing) {
+        await deleteDoc(followerRef);
+        await deleteDoc(followingRef);
+      } else {
+        await setDoc(followerRef, {
+          followedAt: new Date(),
+          username: user.displayName || '',
+        });
+        await setDoc(followingRef, {
+          followedAt: new Date(),
+          username: username || '',
+        });
+      }
+      setIsFollowing(!isFollowing);
+    } catch (err) {
+      console.error("⚠️ Error toggling follow state:", err);
     }
-  };
+  };  
 
   const renderProduct = ({ item }) => (
     <View style={styles.productItem}>
@@ -102,10 +123,8 @@ export default function ProfileScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <CustomHeader title="Profile" showBack onBack={() => navigation.goBack()} />
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={{ color: 'white', fontSize: 18 }}>{'<'} </Text>
-        </TouchableOpacity>
         {avatarUrl ? (
           <FastImage source={{ uri: avatarUrl }} style={styles.avatar} resizeMode={FastImage.resizeMode.cover} />
         ) : (
@@ -117,7 +136,23 @@ export default function ProfileScreen({ navigation }) {
           {followerCount} Followers • {followingCount} Following
         </Text>
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.messageButton}><Text style={styles.buttonText}>Messages</Text></TouchableOpacity>
+        <TouchableOpacity
+            style={styles.messageButton}
+            onPress={() => {
+              if (profileUserId === user.uid) {
+                navigation.navigate('InboxScreen');
+              } else {
+                navigation.navigate('MessagesScreen', {
+                  otherUserId: profileUserId,
+                  otherUsername: username,
+                });
+              }
+            }}
+          >
+            <Text style={styles.buttonText}>
+              {profileUserId === user.uid ? 'Inbox' : 'Message'}
+            </Text>
+          </TouchableOpacity>
           {profileUserId !== user.uid ? (
             <TouchableOpacity
               style={styles.editButton}
@@ -175,7 +210,6 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   header: { alignItems: 'center', backgroundColor: '#000', paddingTop: 60, paddingBottom: 20 },
-  backButton: { position: 'absolute', top: 60, left: 20 },
   avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#888', marginBottom: 8 },
   username: { fontWeight: 'bold', fontSize: 18, color: '#fff' },
   aboutMe: { color: '#ccc', fontStyle: 'italic', marginTop: 4, marginHorizontal: 20, textAlign: 'center' },

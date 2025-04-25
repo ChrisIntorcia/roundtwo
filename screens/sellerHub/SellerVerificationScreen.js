@@ -197,18 +197,7 @@ export default function SellerVerificationScreen() {
         </View>
         <Ionicons name="create-outline" size={20} color="#444" style={styles.editIcon} />
       </TouchableOpacity>
-
-      <TouchableOpacity style={styles.section} onPress={openVerifyIdentity}>
-        <Ionicons name="person-circle-outline" size={24} color="#444" style={styles.icon} />
-        <View>
-          <Text style={styles.sectionTitle}>Verify Identity</Text>
-          <Text style={styles.sectionSubtitle}>
-            {identityVerified ? "Verified" : "Verify"}
-          </Text>
-        </View>
-        <Ionicons name="create-outline" size={20} color="#444" style={styles.editIcon} />
-      </TouchableOpacity>
-
+      
       <TouchableOpacity style={styles.section} onPress={handleStartStripeVerification}>
         <Ionicons name="shield-checkmark-outline" size={24} color="#444" style={styles.icon} />
         <View>

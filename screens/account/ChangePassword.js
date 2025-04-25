@@ -126,15 +126,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   button: {
-    backgroundColor: "#FFD700",
+    backgroundColor: "#E76A54",
+    paddingHorizontal: 40,
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 32,
     alignItems: "center",
   },
   buttonText: {
-    fontWeight: "bold",
+    color: "#fff",
     fontSize: 16,
-    color: "#000",
+    fontWeight: "600",
   },
 });
 
