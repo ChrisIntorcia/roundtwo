@@ -41,26 +41,39 @@ exports.createCheckoutSession = onRequest({
   cors(req, res, async () => {
     try {
       const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
-      const { product, buyerEmail } = req.body;
+      const { productId, buyerEmail } = req.body;   // 👈 FRONTEND MUST SEND productId NOW
 
-      if (!product?.name || !product?.price) {
-        return res.status(400).json({ error: "Missing product name or price" });
+      if (!productId || !buyerEmail) {
+        return res.status(400).json({ error: "Missing productId or buyerEmail" });
       }
+
+      // Fetch product from Firestore
+      const productRef = db.collection("products").doc(productId);
+      const productSnap = await productRef.get();
+
+      if (!productSnap.exists) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      const product = productSnap.data();
 
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
         line_items: [{
           price_data: {
             currency: "usd",
-            product_data: { name: product.name },
-            unit_amount: Math.round(product.price * 100),
+            product_data: {
+              name: product.title,
+              tax_code: product.taxCode || 'txcd_31010000',  // 👈 pass dynamic taxCode (fallback if missing)
+            },
+            unit_amount: Math.round(product.fullPrice * 100),
           },
-          quantity: product.quantity || 1,
+          quantity: 1,
         }],
         mode: "payment",
         customer_email: buyerEmail,
-        success_url: "https://example.com/success",
-        cancel_url: "https://example.com/cancel",
+        success_url: "https://yourdomain.com/success",   // update to real app URLs
+        cancel_url: "https://yourdomain.com/cancel",
       });
 
       res.status(200).json({ url: session.url });
@@ -129,26 +142,30 @@ exports.createStripeAccountLink = onRequest({
       const userDoc = await userRef.get();
 
       let stripeAccountId = userDoc.exists && userDoc.data()?.stripeAccountId;
+      let account;
 
       if (!stripeAccountId) {
-        const account = await stripe.accounts.create({
+        account = await stripe.accounts.create({
           type: "express",
-          capabilities: {
-            transfers: { requested: true },
-          },
+          capabilities: { transfers: { requested: true } },
         });
 
         stripeAccountId = account.id;
         await userRef.set({ stripeAccountId }, { merge: true });
-        console.log(`✅ Created and saved stripeAccountId: ${stripeAccountId}`);
+      } else {
+        account = await stripe.accounts.retrieve(stripeAccountId);
+      }
+
+      if (!account || !account.id) {
+        throw new Error("Stripe account could not be created or retrieved.");
       }
 
       const accountLink = await stripe.accountLinks.create({
         account: stripeAccountId,
-        refresh_url: "https://roundtwo-cc793.web.app/onboarding-refresh.html",
-        return_url: "https://roundtwo-cc793.web.app/onboarding-complete.html",
+        refresh_url: "https://stogora.shop/refresh",
+        return_url: "https://stogora.shop/return",
         type: "account_onboarding",
-      });      
+      });
 
       if (!accountLink?.url || !accountLink.url.startsWith("http")) {
         throw new Error("Stripe did not return a valid onboarding link.");
@@ -161,6 +178,7 @@ exports.createStripeAccountLink = onRequest({
     }
   });
 });
+
 
 // ✅ Verify Stripe Status
 exports.verifyStripeStatus = onRequest({
@@ -192,7 +210,6 @@ exports.verifyStripeStatus = onRequest({
   });
 });
 
-// ✅ Create PaymentIntent (One-Tap)
 exports.createPaymentIntent = onRequest({
   secrets: [STRIPE_SECRET_KEY],
   timeoutSeconds: 60,
@@ -206,18 +223,21 @@ exports.createPaymentIntent = onRequest({
 
     try {
       const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
-      const { amount, stripeAccountId, buyerEmail, application_fee_amount } = req.body;
+      const { productId, stripeAccountId, buyerEmail, application_fee_amount } = req.body;
 
-      console.log("🧪 Received payment intent payload:", {
-        amount,
-        stripeAccountId,
-        buyerEmail,
-        application_fee_amount,
-      });
-
-      if (!amount || !stripeAccountId || !buyerEmail) {
+      if (!productId || !stripeAccountId || !buyerEmail) {
         return res.status(400).json({ error: "Missing required fields" });
       }
+
+      const db = getFirestore();
+      const productRef = db.collection('products').doc(productId);
+      const productSnap = await productRef.get();
+
+      if (!productSnap.exists) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      const product = productSnap.data();
 
       const customers = await stripe.customers.list({ email: buyerEmail });
       let customer = customers.data[0];
@@ -237,8 +257,14 @@ exports.createPaymentIntent = onRequest({
         return res.status(400).json({ error: "No saved payment method found." });
       }
 
+      // 🔥 Tax Calculation
+      const TAX_RATE_PERCENT = 0.07; // 7% flat sales tax
+      const basePrice = product.bulkPrice; // ✅ bulk price, since they're buying live
+      const taxAmount = basePrice * TAX_RATE_PERCENT;
+      const totalAmount = Math.round((basePrice + taxAmount) * 100); // Stripe expects cents
+
       const paymentIntent = await stripe.paymentIntents.create({
-        amount,
+        amount: totalAmount,
         currency: "usd",
         customer: customer.id,
         payment_method: defaultPaymentMethod.id,
@@ -247,6 +273,12 @@ exports.createPaymentIntent = onRequest({
         application_fee_amount,
         transfer_data: {
           destination: stripeAccountId,
+        },
+        metadata: {
+          basePrice: basePrice.toFixed(2),
+          taxAmount: taxAmount.toFixed(2),
+          totalPrice: ((basePrice + taxAmount).toFixed(2)),
+          productId: productId,
         },
       });
 
@@ -365,7 +397,6 @@ exports.sendOrderNotification = require("firebase-functions").firestore
     };
 
     await db.collection("users").doc(buyerId).collection("notifications").add(notification);
-    console.log(`🔔 Notification sent to ${buyerId}`);
   });
 
   exports.createPaymentSheet = onRequest({
@@ -374,8 +405,6 @@ exports.sendOrderNotification = require("firebase-functions").firestore
     cors(req, res, async () => {
       try {
         const { customerEmail } = req.body;
-        console.log("🔁 createPaymentSheet for:", customerEmail);
-        
         const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
   
         if (!customerEmail) {
@@ -387,7 +416,12 @@ exports.sendOrderNotification = require("firebase-functions").firestore
         const customer = customers.data[0] || await stripe.customers.create({ email: customerEmail });
   
         // 💳 Create SetupIntent to save card
-        const setupIntent = await stripe.setupIntents.create({ customer: customer.id });
+// Correct
+const setupIntent = await stripe.setupIntents.create({
+  customer: customer.id,
+  usage: 'off_session', // (optional, but recommended)
+});
+     
   
         // 🔐 Create Ephemeral Key
         const ephemeralKey = await stripe.ephemeralKeys.create(

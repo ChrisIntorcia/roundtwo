@@ -16,6 +16,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { Ionicons } from "@expo/vector-icons";
 import { AppContext } from "../../context/AppContext";
 import * as WebBrowser from "expo-web-browser";
+import CustomHeader from "../../components/CustomHeader";
 
 export default function SellerVerificationScreen() {
   const navigation = useNavigation();
@@ -104,6 +105,7 @@ export default function SellerVerificationScreen() {
         customerEphemeralKeySecret: ephemeralKey,
         setupIntentClientSecret,
         merchantDisplayName: "Roundtwo",
+        returnURL: "roundtwo://payment-complete",
       });
 
       if (initError) {
@@ -134,7 +136,7 @@ export default function SellerVerificationScreen() {
       Alert.alert("Login Required", "Please log in first.");
       return;
     }
-
+  
     try {
       const response = await fetch(
         "https://us-central1-roundtwo-cc793.cloudfunctions.net/createStripeAccountLink",
@@ -144,34 +146,35 @@ export default function SellerVerificationScreen() {
           body: JSON.stringify({ uid: user.uid }),
         }
       );
-
+  
       const { url } = await response.json();
-
-      if (!url || !url.startsWith("http")) {
-        throw new Error("Invalid Stripe URL received");
+  
+      if (url && url.startsWith("https://")) {
+        await WebBrowser.openBrowserAsync(url);
+      } else {
+        console.error("Invalid Stripe URL:", url);
+        Alert.alert("Stripe Error", "Invalid Stripe onboarding link received.");
       }
-
-      await WebBrowser.openBrowserAsync(url);
     } catch (err) {
-      console.error("💥 Stripe Verification Error:", err);
+      console.error("💥 Stripe Verification Error:", err.message);
       Alert.alert("Stripe Error", err.message || "Unable to start Stripe verification.");
     }
-  };
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color="#000" style={{ marginTop: 40 }} />
-        <Text style={{ textAlign: "center", marginTop: 10 }}>
-          Loading verification status...
-        </Text>
-      </SafeAreaView>
-    );
-  }
+  };   
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>Seller Verification</Text>
+<SafeAreaView style={styles.container}>
+<View style={{ marginTop: -55 }}> 
+  <CustomHeader title="Verify Seller" showBack />
+  </View>
+  {loading ? (
+    <>
+      <ActivityIndicator size="large" color="#000" style={{ marginTop: 40 }} />
+      <Text style={{ textAlign: "center", marginTop: 10 }}>
+        Loading verification status...
+      </Text>
+    </>
+  ) : (
+    <>
       <Text style={styles.subtext}>
         Complete the steps below to activate selling features.
       </Text>
@@ -197,7 +200,7 @@ export default function SellerVerificationScreen() {
         </View>
         <Ionicons name="create-outline" size={20} color="#444" style={styles.editIcon} />
       </TouchableOpacity>
-      
+
       <TouchableOpacity style={styles.section} onPress={handleStartStripeVerification}>
         <Ionicons name="shield-checkmark-outline" size={24} color="#444" style={styles.icon} />
         <View>
@@ -206,45 +209,19 @@ export default function SellerVerificationScreen() {
         </View>
         <Ionicons name="create-outline" size={20} color="#444" style={styles.editIcon} />
       </TouchableOpacity>
-    </SafeAreaView>
+    </>
+  )}
+</SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    padding: 20,
-  },
-  header: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  subtext: {
-    fontSize: 14,
-    color: "gray",
-    marginBottom: 20,
-  },
-  section: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 20,
-    borderBottomColor: "#eee",
-    borderBottomWidth: 1,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  sectionSubtitle: {
-    fontSize: 13,
-    color: "gray",
-  },
-  icon: {
-    marginRight: 12,
-  },
-  editIcon: {
-    marginLeft: "auto",
-  },
+  container: { flex: 1, backgroundColor: "#fff", paddingHorizontal: 20 },
+  header: { fontSize: 22, fontWeight: "bold", marginTop: 5, marginBottom: 8 },
+  subtext: { fontSize: 14, color: "gray", marginTop: 10, marginBottom: 20 },
+  section: { flexDirection: "row", alignItems: "center", paddingVertical: 20, borderBottomColor: "#eee", borderBottomWidth: 1 },
+  sectionTitle: { fontSize: 16, fontWeight: "bold" },
+  sectionSubtitle: { fontSize: 13, color: "gray" },
+  icon: { marginRight: 12 },
+  editIcon: { marginLeft: "auto" },
 });

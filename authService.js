@@ -1,64 +1,116 @@
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  getAuth,
+  signInWithCredential,
+  GoogleAuthProvider,
+  OAuthProvider,
+  sendPasswordResetEmail,
+} from "firebase/auth";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebaseConfig";
-import * as Google from 'expo-auth-session/providers/google';
-import { getAuth, signInWithCredential, GoogleAuthProvider, OAuthProvider } from 'firebase/auth';
-import * as WebBrowser from 'expo-web-browser';
-import * as AppleAuthentication from 'expo-apple-authentication';
+import * as AppleAuthentication from "expo-apple-authentication";
+import * as Crypto from "expo-crypto";
 
-// Function to handle user sign-up and save user data in Firestore
-export const signUp = async (email, password, fullName) => {
-  try {
-    const cleanEmail = email.trim(); // ✅ Trim email
+// ---- Helpers ----
 
-    const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
-    const user = userCredential.user;
-
-    if (!fullName) {
-      throw new Error("Full Name is required.");
-    }
-
-    await setDoc(doc(db, "users", user.uid), {
-      fullName,
-      email: cleanEmail, // ✅ Save trimmed email
+// Ensure we have a Firestore “users” doc for newly-signed-up social users
+async function ensureUserDoc(user, extra = {}) {
+  const ref = doc(db, "users", user.uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    await setDoc(ref, {
+      uid: user.uid,
+      email: user.email,
+      fullName: user.displayName || null,
       username: null,
       createdAt: new Date(),
+      ...extra,
     });
-
-    return user;
-  } catch (error) {
-    console.error("Error signing up:", error);
-    throw error;
   }
-};
+}
 
-// Function to handle user login
-export const login = (email, password) => {
-  return signInWithEmailAndPassword(auth, email.trim(), password); // ✅ Trim on login too
-};
+// ---- Email/Password ----
 
-// Google Sign-in
-export const authenticateWithGoogle = async (idToken) => {
-  const auth = getAuth();
-  const credential = GoogleAuthProvider.credential(idToken);
-  return await signInWithCredential(auth, credential);
-};
+export async function signUp(email, password, fullName) {
+  if (!fullName) {
+    throw new Error("Full Name is required.");
+  }
+  const cleanEmail = email.trim();
+  const { user } = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+  await setDoc(doc(db, "users", user.uid), {
+    uid: user.uid,
+    email: cleanEmail,
+    fullName,
+    username: null,
+    createdAt: new Date(),
+  });
+  return user;
+}
 
-// Apple Sign-in
-export const signInWithApple = async () => {
-  const auth = getAuth();
-  const credential = await AppleAuthentication.signInAsync({
+export async function login(email, password) {
+  const cleanEmail = email.trim();
+  const { user } = await signInWithEmailAndPassword(auth, cleanEmail, password);
+  return user;
+}
+
+// ---- Google Sign-In ----
+
+export async function authenticateWithGoogle(idToken, accessToken) {
+  console.log("🪪 Google tokens received:", { idToken, accessToken }); // debug log
+
+  if (!idToken || !accessToken) {
+    throw new Error("Missing Google tokens (idToken or accessToken)");
+  }
+
+  const credential = GoogleAuthProvider.credential(idToken, accessToken);
+  const { user } = await signInWithCredential(getAuth(), credential);
+  await ensureUserDoc(user);
+  return user;
+}
+
+
+// ---- Apple Sign-In ----
+
+export async function signInWithApple() {
+  // generate a random nonce and its SHA256
+  const rawNonce = Math.random().toString(36).slice(2);
+  const hashedNonce = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    rawNonce
+  );
+
+  const appleCredential = await AppleAuthentication.signInAsync({
     requestedScopes: [
-      AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
       AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
     ],
+    nonce: hashedNonce,
   });
 
-  const provider = new OAuthProvider('apple.com');
-  const firebaseCredential = provider.credential({
-    idToken: credential.identityToken,
-    rawNonce: null,
+  if (!appleCredential.identityToken) {
+    throw new Error("Apple authentication failed: no identity token returned");
+  }
+
+  const provider = new OAuthProvider("apple.com");
+  const firebaseCred = provider.credential({
+    idToken: appleCredential.identityToken,
+    rawNonce,
   });
 
-  return await signInWithCredential(auth, firebaseCredential);
+  const { user } = await signInWithCredential(getAuth(), firebaseCred);
+  // record their Firestore profile on first login
+  await ensureUserDoc(user, {
+    fullName:
+      appleCredential.fullName?.givenName +
+        " " +
+        appleCredential.fullName?.familyName || null,
+    email: user.email,
+  });
+
+  return user;
+}
+export const resetPassword = async (email) => {
+  if (!email) throw new Error("missing-email");
+  await sendPasswordResetEmail(auth, email);
 };

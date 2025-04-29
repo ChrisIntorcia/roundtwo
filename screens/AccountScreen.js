@@ -7,6 +7,7 @@ import {
   ScrollView,
   Platform,
   StatusBar,
+  Alert,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { auth } from "../firebaseConfig"; // ✅ use the persistent instance
@@ -14,6 +15,7 @@ import { signOut } from "firebase/auth";  // ✅ keep this to use signOut()
 import { getFirestore, doc, getDoc } from "firebase/firestore";
 import { AppContext } from "../context/AppContext";
 import SellerHub from "./SellerHub";
+import Ionicons from "react-native-vector-icons/Ionicons";
 
 
 const db = getFirestore();
@@ -94,16 +96,17 @@ const AccountScreen = () => {
       <ScrollView contentContainerStyle={styles.content}>
         {activeTab === "account" ? (
           <>
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Referrals & Credits</Text>
-              <Text style={styles.cardBalance}>
-                Balance: <Text style={{ color: "green" }}>$0.00</Text>
-              </Text>
-            </View>
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>My Rewards</Text>
-              <Text style={styles.cardSubtitle}>View Coupons</Text>
-            </View>
+            <TouchableOpacity style={styles.card} onPress={() => Alert.alert("Coming Soon", "This feature will be available in a future update.")}>
+  <Text style={styles.cardTitle}>Referrals & Credits</Text>
+  <Text style={styles.cardBalance}>
+    Balance: <Text style={{ color: "green" }}>$0.00</Text>
+  </Text>
+</TouchableOpacity>
+
+<TouchableOpacity style={styles.card} onPress={() => Alert.alert("Coming Soon", "This feature will be available in a future update.")}>
+  <Text style={styles.cardTitle}>My Rewards</Text>
+  <Text style={styles.cardSubtitle}>View Coupons</Text>
+</TouchableOpacity>
             <TouchableOpacity
               style={styles.option}
               onPress={() => navigation.navigate("InboxScreen")}
@@ -140,8 +143,16 @@ const AccountScreen = () => {
             >
               <Text style={styles.optionText}>Change Password</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.option, styles.logout]} onPress={handleLogout}>
-              <Text style={[styles.optionText, styles.logoutText]}>Logout</Text>
+
+            <TouchableOpacity
+              style={styles.option}
+              onPress={() => navigation.navigate("AccountInfo")}
+            >
+              <Text style={styles.optionText}>Account Info</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.option} onPress={handleLogout}>
+              <Text style={[styles.optionText, styles.deleteText]}>Logout</Text>
             </TouchableOpacity>
           </>
         ) : isSeller ? (
@@ -244,12 +255,8 @@ const styles = StyleSheet.create({
     color: "#000",
     fontSize: 16,
   },
-  logout: {
-    marginTop: 20,
-  },
-  logoutText: {
-    color: "red",
-    fontWeight: "bold",
+  deleteText: {
+    color: "#E76A54",
   },
   notSellerContainer: {
     padding: 20,
@@ -271,6 +278,28 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
     color: "#000",
+  },
+  section: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  icon: {
+    marginRight: 15,
+  },
+  sectionTitle: {
+    color: "#000",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  sectionSubtitle: {
+    color: "#666",
+    marginTop: 5,
+  },
+  editIcon: {
+    marginLeft: "auto",
   },
 });
 

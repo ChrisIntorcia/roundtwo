@@ -9,6 +9,7 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
+  ActivityIndicator
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Ionicons } from "@expo/vector-icons";
@@ -55,83 +56,61 @@ export default function PaymentsShippingScreen() {
   }, [user]);
 
   const openPaymentSheet = async () => {
-  if (!user || isProcessingPayment) return;
-
-  setIsProcessingPayment(true); // ⏳ lock button
-
-  try {
-    const response = await fetch(
-      "https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentSheet",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ customerEmail: user.email }),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch setup intent");
-    }
-
-    const { setupIntentClientSecret, ephemeralKey, customer, setupIntentId } = await response.json();
-
-    const { error: initError } = await initPaymentSheet({
-      customerId: customer,
-      customerEphemeralKeySecret: ephemeralKey,
-      setupIntentClientSecret,
-      merchantDisplayName: "Roundtwo",
-    });
-
-    if (initError) {
-      Alert.alert("Stripe Init Error", initError.message);
-      return;
-    }
-
-    const { error: sheetError } = await presentPaymentSheet();
-    if (sheetError) {
-      if (sheetError.code === "Canceled") return;
-      Alert.alert("Error", sheetError.message);
-      return;
-    }
-
-    // Save minimal card details to Firestore via backend
+    if (!user || isProcessingPayment) return;
+  
+    setIsProcessingPayment(true);
+  
     try {
-      await fetch("https://us-central1-roundtwo-cc793.cloudfunctions.net/savePaymentMethodDetails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          setupIntentId,
-          uid: user.uid,
-        }),
+      const response = await fetch(
+        "https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentSheet",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ customerEmail: user.email }),
+        }
+      );
+  
+      if (!response.ok) {
+        throw new Error("Failed to create Payment Sheet");
+      }
+  
+      const { setupIntentClientSecret, ephemeralKey, customer } = await response.json();
+  
+      const { error: initError } = await initPaymentSheet({
+        customerId: customer,
+        customerEphemeralKeySecret: ephemeralKey,
+        setupIntentClientSecret: setupIntentClientSecret,
+        merchantDisplayName: "Roundtwo",
+        returnURL: "roundtwo://payment-complete",
       });
-
+  
+      if (initError) {
+        throw new Error(initError.message);
+      }
+  
+      const { error: sheetError } = await presentPaymentSheet();
+  
+      if (sheetError) {
+        if (sheetError.code === "Canceled") {
+          return; // silent cancel
+        }
+        throw new Error(sheetError.message);
+      }
+  
+      // ✅ Save after successful setup
       const userRef = doc(db, "users", user.uid);
       await setDoc(userRef, { hasSavedPaymentMethod: true }, { merge: true });
-
-      const updatedDoc = await getDoc(userRef);
-      const data = updatedDoc.data();
-      const card = data?.paymentMethod?.card;
-      const name = data?.paymentMethod?.billingDetails?.name;
-
-      if (card && card.last4 && card.brand) {
-        const lastName = name?.split(" ").slice(-1)[0] || "";
-        setPaymentSummary(`•••• ${card.last4} ${card.brand.toUpperCase()}`);
-      }
-
-      Alert.alert("✅ Success", "Payment method added and saved!");
+  
+      setPaymentSummary("**** CARD SAVED");
+      Alert.alert("✅ Success", "Payment method added!");
     } catch (err) {
-      console.error("❌ Failed to save payment details:", err);
-      Alert.alert("Error", "Card added, but display info could not be saved.");
+      console.error("💥 Payment Setup Error:", err.message);
+      Alert.alert("Error", err.message || "Something went wrong during payment setup.");
+    } finally {
+      setIsProcessingPayment(false);
     }
-  } catch (err) {
-    console.error("💥 Setup Sheet Error:", err);
-    Alert.alert("Error", err.message || "Something went wrong.");
-  } finally {
-    setIsProcessingPayment(false); // ✅ always unlock
-  }
-};
+  };
+  
 
 
   const openShippingSheet = () => {
@@ -169,9 +148,13 @@ export default function PaymentsShippingScreen() {
             />
             <View>
               <Text style={styles.sectionTitle}>Add Payment Method</Text>
-              <Text style={styles.sectionSubtitle}>
-                {paymentSummary || "Please input your payment info."}
-              </Text>
+              {isProcessingPayment ? (
+                <ActivityIndicator size="small" color="#444" style={{ marginTop: 4 }} />
+              ) : (
+                <Text style={styles.sectionSubtitle}>
+                  {paymentSummary || "Please input your payment info."}
+                </Text>
+              )}
             </View>
             <Ionicons
               name="create-outline"
@@ -180,6 +163,7 @@ export default function PaymentsShippingScreen() {
               style={styles.editIcon}
             />
           </TouchableOpacity>
+
 
           <TouchableOpacity style={styles.section} onPress={openShippingSheet}>
             <Ionicons

@@ -8,10 +8,10 @@ import 'react-native-reanimated';
 import * as Linking from "expo-linking";
 import MessagesScreen from "./screens/account/MessagesScreen";
 import InboxScreen from "./screens/account/InboxScreen";
+import { LogBox } from "react-native";
 
 // Screens
 import OnboardingScreen from "./components/OnboardingScreen";
-import GoLiveScreen from "./screens/GoLiveScreen";
 import LoginScreen from "./screens/LoginScreen";
 import SignupScreen from "./screens/SignupScreen";
 import BottomTabs from "./screens/BottomTabs";
@@ -42,6 +42,8 @@ import BroadcasterScreen from "./screens/BroadcasterScreen";
 import Order from "./screens/sellerHub/Order";
 import Notifications from './screens/account/Notifications';
 import ShippingLabelScreen from "./screens/sellerHub/ShippingLabelScreen";
+import DeleteAccount from "./screens/account/DeleteAccountScreen";
+import AccountInfo from "./screens/account/AccountInfoScreen";
 
 import { AppProvider } from "./context/AppContext";
 import { auth } from "./firebaseConfig";
@@ -57,6 +59,11 @@ const linking = {
   },
 };
 
+// hide that specific recaptcha warning
+LogBox.ignoreLogs([
+  "FirebaseRecaptcha: Support for defaultProps will be removed from function components"
+]);
+
 const Stack = createStackNavigator();
 
 export default function App() {
@@ -64,7 +71,6 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log("🔥 Auth state changed:", user?.email || "Logged out");
       setAuthReady(true);
     });
 
@@ -76,7 +82,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StripeProvider
-        publishableKey="pk_test_51LLWUzBDUXSD1c3FLs6vIFKT9eyd0O3ex9yA13jcaDhUJFcabm5VZkPZfCc7rikCWyTeVjZlM7dHXm10IlhoQBKG00g4SsRQfr"
+        publishableKey="pk_live_51LLWUzBDUXSD1c3Fa4lsPeJDWhC5qUP5glNZ8hA2BipifgqkdPXFTix9FUo09uggUbt6g8dAEYvlPeOCNKOY7vWa00iYYSzcCy"
       >
         <AppProvider>
           <NavigationContainer linking={linking}>
@@ -100,7 +106,6 @@ export default function App() {
               <Stack.Screen name="SellerAccountTabs" component={SellerAccountTabs} options={{ title: "Seller Account", headerShown: false }} />
               <Stack.Screen name="Account" component={AccountScreen} options={{ title: "Account" }} />
               <Stack.Screen name="SellerHub" component={SellerHub} options={{ title: "Seller Hub" }} />
-              <Stack.Screen name="GoLiveScreen" component={GoLiveScreen} options={{headerShown: false}} />
               <Stack.Screen name="ViewerScreen" component={ViewerScreen} options={{headerShown: false, gestureEnabled: false}} />
               <Stack.Screen name="Inventory" component={Inventory} options={{ title: "My Inventory", headerShown: false }} />
               <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{ title: "Profile" , headerShown: false  }} />
@@ -110,9 +115,11 @@ export default function App() {
               <Stack.Screen name="AddressesScreen" component={AddressesScreen} options={{ headerShown: false }} />
               <Stack.Screen name="PayoutScreen" component={PayoutScreen} options={{ headerShown: false }} />
               <Stack.Screen name="Transactions" component={TransactionsScreen} />
-              <Stack.Screen name="SellerVerificationScreen" component={SellerVerificationScreen} options={{ title: "Verify Seller" }} />
+              <Stack.Screen name="SellerVerificationScreen" component={SellerVerificationScreen} options={{ title: "Verify Seller", headerShown: false}} />
               <Stack.Screen name="ChangeEmail" component={ChangeEmail} options={{ headerShown: false }} />
               <Stack.Screen name="ChangePassword" component={ChangePassword} options={{ headerShown: false }} />
+              <Stack.Screen name="AccountInfo" component={AccountInfo} options={{ headerShown: false }} />
+              <Stack.Screen name="DeleteAccount" component={DeleteAccount} options={{ headerShown: false }} />
               <Stack.Screen name="VerifyPhone" component={VerifyPhone} options={{ presentation: "modal", headerShown: false }} />
               <Stack.Screen name="VerifyIdentity" component={VerifyIdentity} options={{ title: "Verify Identity" }} />
               <Stack.Screen name="PreStreamSetup" component={PreStreamSetup} options={{ headerShown: false }} />

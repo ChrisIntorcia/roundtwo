@@ -119,6 +119,7 @@ const CreateProduct = () => {
         createdAt: Timestamp.now(),
         stripeAccountId,
         quantity: parsedQuantity,
+        taxCode: "txcd_31010000",
       };
   
       const productRef = doc(collection(db, 'products'));

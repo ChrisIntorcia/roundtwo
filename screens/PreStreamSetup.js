@@ -111,9 +111,16 @@ export default function PreStreamSetup() {
         throw new Error();
       }
     } catch {
-      Alert.alert('Stripe Not Ready', 'Your Stripe account is not fully enabled for payouts and charges.');
+      Alert.alert(
+        'Stripe Not Ready',
+        'Your Stripe account is not fully enabled for payouts and charges.',
+        [
+          { text: 'Go to Payouts', onPress: () => navigation.replace('PayoutScreen') },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
       setIsLoading(false);
-      return;
+      return;      
     }
 
     const uid = Math.floor(Math.random() * 1000000);
@@ -181,15 +188,21 @@ export default function PreStreamSetup() {
         enableOnAndroid
         extraScrollHeight={20}
       >
-        <CustomHeader title="Go Live Setup" showBack={true} />
+        <CustomHeader title="Show Setup" showBack={true} />
         <View style={styles.container}>
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Stream Title</Text>
             <TextInput
   placeholder="Enter stream title"
   value={streamTitle}
-  autoCapitalize="characters"
-  onChangeText={(text) => setStreamTitle(text.toUpperCase())}
+  onChangeText={(text) => {
+    const capitalized = text
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+    setStreamTitle(capitalized);
+  }}  
   style={styles.input}
 />
             <Text style={styles.sectionTitle}>Thumbnail</Text>

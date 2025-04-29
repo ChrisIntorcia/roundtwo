@@ -1,0 +1,544 @@
+› Skipping dev server
+› Planning build
+    Run script build phase '[CP-User] [Hermes] Replace Hermes for the right configuration, if needed' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'hermes-engine' from project 'Pods')
+› Executing react-native Pods/hermes-engine » [CP-User] [Hermes] Replace Hermes for the right configuration, if needed
+› Executing react-native-agora Pods/AgoraIrisRTC_iOS » [CP] Copy XCFrameworks
+› Executing react-native-agora Pods/AgoraInfra_iOS » [CP] Copy XCFrameworks
+› Preparing Pods/glog-glog_privacy » ResourceBundle-glog_privacy-glog-Info.plist
+› Preparing Pods/boost-boost_privacy » ResourceBundle-boost_privacy-boost-Info.plist
+› Preparing Pods/RCT-Folly-RCT-Folly_privacy » ResourceBundle-RCT-Folly_privacy-RCT-Folly-Info.plist
+› Preparing expo-firebase-core Pods/nanopb » nanopb-Info.plist
+› Preparing expo-image-manipulator Pods/libwebp » libwebp-Info.plist
+› Preparing expo-dev-menu-interface Pods/expo-dev-menu-interface » expo-dev-menu-interface-Info.plist
+› Preparing react-native Pods/fmt » fmt-Info.plist
+› Preparing Pods/ZXingObjC » ZXingObjC-Info.plist
+› Copying   react-native React-RCTFabric/RCTFabric.framework/Headers/React/RCTThirdPartyFabricComponentsProvider.h ➜ node_modules/react-native/React/Fabric/RCTThirdPartyFabricComponentsProvider.h
+› Preparing Pods/react-native-maps-ReactNativeMapsPrivacy » ResourceBundle-ReactNativeMapsPrivacy-react-native-maps-Info.plist
+› Preparing Pods/expo-dev-menu-EXDevMenu » ResourceBundle-EXDevMenu-expo-dev-menu-Info.plist
+› Compiling expo-dev-launcher Pods/expo-dev-launcher-EXDevLauncher » EXDevLauncherErrorView.storyboard
+› Preparing react-native Pods/Yoga » Yoga-Info.plist
+› Preparing Pods/StripePayments-StripePaymentsBundle » ResourceBundle-StripePaymentsBundle-StripePayments-Info.plist
+› Preparing Pods/StripeFinancialConnections-StripeFinancialConnectionsBundle » ResourceBundle-StripeFinancialConnectionsBundle-StripeFinancialConnections-Info.plist
+› Preparing Pods/StripeUICore-StripeUICoreBundle » ResourceBundle-StripeUICoreBundle-StripeUICore-Info.plist
+› Preparing Pods/StripePaymentsUI-StripePaymentsUIBundle » ResourceBundle-StripePaymentsUIBundle-StripePaymentsUI-Info.plist
+› Preparing Pods/StripePayments-Stripe3DS2 » ResourceBundle-Stripe3DS2-StripePayments-Info.plist
+› Preparing Pods/StripePaymentSheet-StripePaymentSheetBundle » ResourceBundle-StripePaymentSheetBundle-StripePaymentSheet-Info.plist
+› Preparing Pods/StripeCore-StripeCoreBundle » ResourceBundle-StripeCoreBundle-StripeCore-Info.plist
+› Preparing react-native Pods/SocketRocket » SocketRocket-Info.plist
+› Preparing react-native-fast-image Pods/SDWebImage » SDWebImage-Info.plist
+› Preparing react-native Pods/React-rendererconsistency » React-rendererconsistency-Info.plist
+› Preparing react-native Pods/React-nativeconfig » React-nativeconfig-Info.plist
+› Preparing Pods/Stripe-StripeBundle » ResourceBundle-StripeBundle-Stripe-Info.plist
+› Preparing react-native Pods/React-featureflags » React-featureflags-Info.plist
+› Preparing react-native Pods/React-debug » React-debug-Info.plist
+› Preparing Pods/React-cxxreact-React-cxxreact_privacy » ResourceBundle-React-cxxreact_privacy-React-cxxreact-Info.plist
+› Preparing Pods/React-Core-React-Core_privacy » ResourceBundle-React-Core_privacy-React-Core-Info.plist
+› Preparing Pods/RNCAsyncStorage-RNCAsyncStorage_resources » ResourceBundle-RNCAsyncStorage_resources-RNCAsyncStorage-Info.plist
+› Preparing react-native Pods/RCTDeprecation » RCTDeprecation-Info.plist
+› Preparing Pods/PromisesObjC-FBLPromises_Privacy » ResourceBundle-FBLPromises_Privacy-PromisesObjC-Info.plist
+› Preparing Pods/GoogleUtilities-GoogleUtilities_Privacy » ResourceBundle-GoogleUtilities_Privacy-GoogleUtilities-Info.plist
+› Preparing Pods/GoogleDataTransport-GoogleDataTransport_Privacy » ResourceBundle-GoogleDataTransport_Privacy-GoogleDataTransport-Info.plist
+› Preparing Pods/ExpoFileSystem-ExpoFileSystem_privacy » ResourceBundle-ExpoFileSystem_privacy-ExpoFileSystem-Info.plist
+› Preparing expo-json-utils Pods/EXJSONUtils » EXJSONUtils-Info.plist
+› Preparing Pods/EXConstants-ExpoConstants_privacy » ResourceBundle-ExpoConstants_privacy-EXConstants-Info.plist
+› Preparing expo-constants Pods/EXConstants-EXConstants » ResourceBundle-EXConstants-EXConstants-Info.plist
+› Preparing Pods/EXApplication-ExpoApplication_privacy » ResourceBundle-ExpoApplication_privacy-EXApplication-Info.plist
+› Preparing react-native Pods/DoubleConversion » DoubleConversion-Info.plist
+› Executing react-native Pods/hermes-engine » [CP] Copy XCFrameworks
+› Executing react-native-agora Pods/AgoraRtcEngine_iOS » [CP] Copy XCFrameworks
+› Executing react-native Pods/fmt » Create Symlinks to Header Folders
+› Executing react-native Pods/React-featureflags » Create Symlinks to Header Folders
+› Executing react-native Pods/React-rendererconsistency » Create Symlinks to Header Folders
+› Executing react-native Pods/React-nativeconfig » Create Symlinks to Header Folders
+› Executing react-native Pods/React-debug » Create Symlinks to Header Folders
+› Preparing react-native Pods/glog » glog-Info.plist
+› Preparing @stripe/stripe-react-native Pods/StripeCore » StripeCore-Info.plist
+› Preparing expo-firebase-core Pods/PromisesObjC » PromisesObjC-Info.plist
+› Preparing expo-image-manipulator Pods/SDWebImageWebPCoder » SDWebImageWebPCoder-Info.plist
+› Executing react-native Pods/Yoga » Create Symlinks to Header Folders
+› Preparing react-native Pods/React-logger » React-logger-Info.plist
+› Preparing react-native Pods/React-Mapbuffer » React-Mapbuffer-Info.plist
+› Preparing react-native Pods/RCT-Folly » RCT-Folly-Info.plist
+› Preparing Pods/GoogleUtilities » GoogleUtilities-Info.plist
+› Executing react-native Pods/React-Mapbuffer » Create Symlinks to Header Folders
+› Executing expo-firebase-core Pods/GoogleAppMeasurement » [CP] Copy XCFrameworks
+› Preparing expo-firebase-core Pods/GoogleDataTransport » GoogleDataTransport-Info.plist
+› Preparing expo-firebase-core Pods/FirebaseCoreInternal » FirebaseCoreInternal-Info.plist
+› Executing react-native Pods/RCT-Folly » Create Symlinks to Header Folders
+› Preparing expo-firebase-core Pods/FirebaseCoreDiagnostics » FirebaseCoreDiagnostics-Info.plist
+› Preparing @stripe/stripe-react-native Pods/StripeUICore » StripeUICore-Info.plist
+› Preparing @stripe/stripe-react-native Pods/StripePayments » StripePayments-Info.plist
+› Preparing @stripe/stripe-react-native Pods/StripeApplePay » StripeApplePay-Info.plist
+› Preparing react-native Pods/React-perflogger » React-perflogger-Info.plist
+› Preparing react-native Pods/React-rendererdebug » React-rendererdebug-Info.plist
+› Preparing react-native Pods/React-jsi » React-jsi-Info.plist
+› Preparing expo-firebase-core Pods/FirebaseCore » FirebaseCore-Info.plist
+› Executing react-native Pods/React-rendererdebug » Create Symlinks to Header Folders
+› Preparing react-native Pods/React-utils » React-utils-Info.plist
+› Preparing expo-firebase-core Pods/FirebaseInstallations » FirebaseInstallations-Info.plist
+› Preparing react-native Pods/React-jsinspector » React-jsinspector-Info.plist
+› Executing react-native Pods/React-utils » Create Symlinks to Header Folders
+› Executing expo-firebase-core Pods/FirebaseAnalytics » [CP] Copy XCFrameworks
+› Preparing react-native Pods/React-cxxreact » React-cxxreact-Info.plist
+› Preparing react-native Pods/ReactCommon » ReactCommon-Info.plist
+› Preparing react-native Pods/React-performancetimeline » React-performancetimeline-Info.plist
+› Preparing react-native Pods/React-jsiexecutor » React-jsiexecutor-Info.plist
+› Preparing react-native Pods/React-jserrorhandler » React-jserrorhandler-Info.plist
+› Executing react-native Pods/React-performancetimeline » Create Symlinks to Header Folders
+› Executing react-native Pods/ReactCommon » Create Symlinks to Header Folders
+› Executing react-native Pods/React-jserrorhandler » Create Symlinks to Header Folders
+› Preparing react-native Pods/React-graphics » React-graphics-Info.plist
+› Preparing react-native Pods/React-hermes » React-hermes-Info.plist
+› Executing react-native Pods/React-graphics » Create Symlinks to Header Folders
+› Preparing react-native Pods/React-runtimescheduler » React-runtimescheduler-Info.plist
+› Executing react-native Pods/React-runtimescheduler » Create Symlinks to Header Folders
+› Compiling react-native Pods/React-Core » RCTUIManagerObserverCoordinator.mm
+› Compiling react-native Pods/React-Core » RCTSurfaceView.mm
+› Compiling react-native Pods/React-Core » RCTSurfaceRootView.mm
+› Compiling react-native Pods/React-Core » RCTSurfaceHostingView.mm
+› Compiling react-native Pods/React-Core » RCTSurfaceSizeMeasureMode.mm
+› Compiling react-native Pods/React-Core » RCTSurfaceHostingProxyRootView.mm
+› Compiling react-native Pods/React-Core » RCTSurface.mm
+› Compiling react-native Pods/React-Core » RCTPerformanceLogger.mm
+› Compiling react-native Pods/React-Core » RCTPausedInDebuggerOverlayController.mm
+› Compiling react-native Pods/React-Core » RCTPackagerConnection.mm
+› Compiling react-native Pods/React-Core » RCTObjcExecutor.mm
+› Compiling react-native Pods/React-Core » RCTNativeModule.mm
+› Compiling react-native Pods/React-Core » RCTModuleMethod.mm
+› Compiling react-native Pods/React-Core » RCTModuleData.mm
+› Compiling react-native Pods/React-Core » RCTMessageThread.mm
+› Compiling react-native Pods/React-Core » RCTManagedPointer.mm
+› Compiling react-native Pods/React-Core » RCTLog.mm
+› Compiling react-native Pods/React-Core » RCTLocalizedString.mm
+› Compiling react-native Pods/React-Core » RCTJavaScriptLoader.mm
+› Compiling react-native Pods/React-Core » RCTJSIExecutorRuntimeInstaller.mm
+› Compiling react-native Pods/React-Core » RCTInspectorUtils.mm
+› Compiling react-native Pods/React-Core » RCTInspectorNetworkHelper.mm
+› Compiling react-native Pods/React-Core » RCTInspectorDevServerHelper.mm
+› Compiling react-native Pods/React-Core » RCTInspector.mm
+› Compiling react-native Pods/React-Core » RCTFont.mm
+› Compiling react-native Pods/React-Core » RCTFollyConvert.mm
+› Compiling react-native Pods/React-Core » RCTDefaultCxxLogFunction.mm
+› Compiling react-native Pods/React-Core » RCTCxxUtils.mm
+› Compiling react-native Pods/React-Core » RCTCxxModule.mm
+› Compiling react-native Pods/React-Core » RCTCxxMethod.mm
+› Compiling react-native Pods/React-Core » RCTCxxInspectorWebSocketAdapter.mm
+› Compiling react-native Pods/React-Core » RCTCxxInspectorPackagerConnectionDelegate.mm
+› Compiling react-native Pods/React-Core » RCTCxxInspectorPackagerConnection.mm
+› Compiling react-native Pods/React-Core » RCTCxxBridge.mm
+› Compiling react-native Pods/React-Core » RCTConvert.mm
+› Compiling react-native Pods/React-Core » RCTCallInvoker.mm
+› Compiling react-native Pods/React-Core » RCTBundleURLProvider.mm
+› Compiling react-native Pods/React-Core » RCTBridgeProxy.mm
+› Compiling react-native Pods/React-Core » RCTBridge.mm
+› Compiling react-native Pods/React-Core » NSDataBigString.mm
+› Preparing Pods/expo-dev-launcher-EXDevLauncher » ResourceBundle-EXDevLauncher-expo-dev-launcher-Info.plist
+› Preparing react-native Pods/React-RuntimeCore » React-RuntimeCore-Info.plist
+› Compiling react-native Pods/React-Core » React_vers.c
+› Preparing react-native Pods/React-Core » React-Core-Info.plist
+› Executing react-native Pods/React-RuntimeCore » Create Symlinks to Header Folders
+› Preparing @stripe/stripe-react-native Pods/StripeFinancialConnections » StripeFinancialConnections-Info.plist
+› Preparing @stripe/stripe-react-native Pods/StripePaymentsUI » StripePaymentsUI-Info.plist
+› Preparing react-native Pods/React-RuntimeHermes » React-RuntimeHermes-Info.plist
+› Executing react-native Pods/React-RuntimeHermes » Create Symlinks to Header Folders
+› Preparing @stripe/stripe-react-native Pods/StripePaymentSheet » StripePaymentSheet-Info.plist
+› Preparing @stripe/stripe-react-native Pods/Stripe » Stripe-Info.plist
+› Compiling react-native Pods/React-Core » React-Core-dummy.m
+› Compiling react-native Pods/React-Core » RCTDevLoadingViewSetEnabled.m
+› Compiling react-native Pods/React-Core » RCTCxxConvert.m
+› Compiling react-native Pods/React-Core » RCTAssert.m
+› Compiling react-native Pods/React-Core » RCTBridgeConstants.m
+› Compiling react-native Pods/React-Core » RCTBorderDrawing.m
+› Compiling react-native Pods/React-Core » RCTConstants.m
+› Compiling react-native Pods/React-Core » RCTVersion.m
+› Compiling react-native Pods/React-Core » RCTUtilsUIOverride.m
+› Compiling react-native Pods/React-Core » RCTUtils.m
+› Compiling react-native Pods/React-Core » RCTUIUtils.m
+› Compiling react-native Pods/React-Core » RCTUIManagerUtils.m
+› Compiling react-native Pods/React-Core » RCTSurfaceStage.m
+› Compiling react-native Pods/React-Core » RCTSafeAreaViewLocalData.m
+› Compiling react-native Pods/React-Core » RCTReloadCommand.m
+› Compiling react-native Pods/React-Core » RCTRefreshControl.m
+› Compiling react-native Pods/React-Core » RCTRedBoxSetEnabled.m
+› Compiling react-native Pods/React-Core » RCTRedBoxExtraDataViewController.m
+› Compiling react-native Pods/React-Core » RCTPerformanceLoggerLabels.m
+› Compiling react-native Pods/React-Core » RCTParserUtils.m
+› Compiling react-native Pods/React-Core » RCTPackagerClient.m
+› Compiling react-native Pods/React-Core » RCTMultipartStreamReader.m
+› Compiling react-native Pods/React-Core » RCTMultipartDataTask.m
+› Compiling react-native Pods/React-Core » RCTKeyCommands.m
+› Compiling react-native Pods/React-Core » RCTJSThread.m
+› Compiling react-native Pods/React-Core » RCTJSStackFrame.m
+› Compiling react-native Pods/React-Core » RCTI18nUtil.m
+› Compiling react-native Pods/React-Core » RCTFrameUpdate.m
+› Compiling react-native Pods/React-Core » RCTErrorInfo.m
+› Compiling react-native Pods/React-Core » RCTActivityIndicatorView.m
+› Compiling react-native Pods/React-Core » RCTInspectorPackagerConnection.m
+› Compiling react-native Pods/React-Core » RCTSurfacePresenterStub.m
+› Compiling react-native Pods/React-Core » RCTComponentEvent.m
+› Compiling react-native Pods/React-Core » RCTScrollEvent.m
+› Compiling react-native Pods/React-Core » RCTTouchEvent.m
+› Compiling react-native Pods/React-Core » RCTDisplayLink.m
+› Compiling react-native Pods/React-Core » RCTModuleRegistry.m
+› Compiling react-native Pods/React-Core » RCTModalManager.m
+› Compiling react-native Pods/React-Core » RCTEventEmitter.m
+› Compiling react-native Pods/React-Core » UIView+React.m
+› Compiling react-native Pods/React-Core » RCTWrapperViewController.m
+› Compiling react-native Pods/React-Core » RCTViewRegistry.m
+› Compiling react-native Pods/React-Core » RCTViewUtils.m
+› Compiling react-native Pods/React-Core » RCTViewManager.m
+› Compiling react-native Pods/React-Core » RCTView.m
+› Compiling react-native Pods/React-Core » RCTUIManager.m
+› Compiling react-native Pods/React-Core » RCTTouchHandler.m
+› Compiling react-native Pods/React-Core » RCTSwitchManager.m
+› Compiling react-native Pods/React-Core » RCTSwitch.m
+› Compiling react-native Pods/React-Core » RCTSurfaceRootShadowView.m
+› Compiling react-native Pods/React-Core » RCTShadowView.m
+› Compiling react-native Pods/React-Core » RCTShadowView+Layout.m
+› Compiling react-native Pods/React-Core » RCTShadowView+Internal.m
+› Compiling react-native Pods/React-Core » RCTScrollViewManager.m
+› Compiling react-native Pods/React-Core » RCTScrollView.m
+› Compiling react-native Pods/React-Core » RCTScrollContentViewManager.m
+› Compiling react-native Pods/React-Core » RCTScrollContentView.m
+› Compiling react-native Pods/React-Core » RCTScrollContentShadowView.m
+› Compiling react-native Pods/React-Core » RCTSafeAreaViewManager.m
+› Compiling react-native Pods/React-Core » RCTSafeAreaView.m
+› Compiling react-native Pods/React-Core » RCTSafeAreaShadowView.m
+› Compiling react-native Pods/React-Core » RCTRootView.m
+› Compiling react-native Pods/React-Core » RCTRootShadowView.m
+› Compiling react-native Pods/React-Core » RCTRootContentView.m
+› Compiling react-native Pods/React-Core » RCTRefreshControlManager.m
+› Compiling react-native Pods/React-Core » RCTReconnectingWebSocket.m
+› Compiling react-native Pods/React-Core » RCTProfile.m
+› Compiling react-native Pods/React-Core » RCTModalHostViewManager.m
+› Compiling react-native Pods/React-Core » RCTModalHostViewController.m
+› Compiling react-native Pods/React-Core » RCTModalHostView.m
+› Compiling react-native Pods/React-Core » RCTLayoutAnimationGroup.m
+› Compiling react-native Pods/React-Core » RCTLayoutAnimation.m
+› Compiling react-native Pods/React-Core » RCTLayout.m
+› Compiling react-native Pods/React-Core » RCTImageSource.m
+› Compiling react-native Pods/React-Core » RCTEventDispatcher.m
+› Compiling react-native Pods/React-Core » RCTDebuggingOverlayManager.m
+› Compiling react-native Pods/React-Core » RCTDebuggingOverlay.m
+› Compiling react-native Pods/React-Core » RCTConvert+Transform.m
+› Compiling react-native Pods/React-Core » RCTConvert+CoreLocation.m
+› Compiling react-native Pods/React-Core » RCTComponentData.m
+› Compiling react-native Pods/React-Core » RCTCallableJSModules.m
+› Compiling react-native Pods/React-Core » RCTBundleManager.m
+› Compiling react-native Pods/React-Core » RCTBridgeModuleDecorator.m
+› Compiling react-native Pods/React-Core » RCTActivityIndicatorViewManager.m
+› Signing   react-native Pods/React-Core » React.framework
+› Preparing @stripe/stripe-react-native Pods/stripe-react-native » stripe-react-native-Info.plist
+› Preparing react-native Pods/React-RCTText » React-RCTText-Info.plist
+› Preparing react-native Pods/RCTTypeSafety » RCTTypeSafety-Info.plist
+› Preparing react-native-fast-image Pods/RNFastImage » RNFastImage-Info.plist
+› Preparing react-native-get-random-values Pods/react-native-get-random-values » react-native-get-random-values-Info.plist
+› Preparing react-native Pods/React-NativeModulesApple » React-NativeModulesApple-Info.plist
+› Preparing react-native-maps Pods/react-native-maps » react-native-maps-Info.plist
+› Executing react-native Pods/React-NativeModulesApple » Create Symlinks to Header Folders
+› Preparing react-native Pods/React-Fabric » React-Fabric-Info.plist
+› Executing react-native Pods/React-Fabric » [CP-User] [RN]Check rncore
+› Executing react-native Pods/React-Fabric » Create Symlinks to Header Folders
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-ImageManager' from project 'Pods')
+› Preparing react-native Pods/React-ImageManager » React-ImageManager-Info.plist
+› Executing react-native Pods/React-ImageManager » Create Symlinks to Header Folders
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-FabricImage' from project 'Pods')
+› Preparing react-native Pods/React-FabricImage » React-FabricImage-Info.plist
+› Executing react-native Pods/React-FabricImage » Create Symlinks to Header Folders
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'ReactCodegen' from project 'Pods')
+› Preparing roundtwo Pods/ReactCodegen » ReactCodegen-Info.plist
+› Executing roundtwo Pods/ReactCodegen » [CP-User] Generate Specs
+› Compiling roundtwo Pods/ReactCodegen » ComponentDescriptors.cpp
+› Compiling roundtwo Pods/ReactCodegen » ComponentDescriptors.cpp
+› Compiling roundtwo Pods/ReactCodegen » ComponentDescriptors.cpp
+› Compiling roundtwo Pods/ReactCodegen » EventEmitters.cpp
+› Compiling roundtwo Pods/ReactCodegen » RNCWebViewSpecJSI-generated.cpp
+› Compiling roundtwo Pods/ReactCodegen » ComponentDescriptors.cpp
+› Compiling roundtwo Pods/ReactCodegen » RCTModulesConformingToProtocolsProvider.mm
+› Compiling roundtwo Pods/ReactCodegen » Props.cpp
+› Compiling roundtwo Pods/ReactCodegen » RNCWebViewSpec-generated.mm
+› Compiling roundtwo Pods/ReactCodegen » RNDateTimePickerCGen-generated.mm
+› Compiling roundtwo Pods/ReactCodegen » safeareacontextJSI-generated.cpp
+› Compiling roundtwo Pods/ReactCodegen » safeareacontext-generated.mm
+› Compiling roundtwo Pods/ReactCodegen » rnscreensJSI-generated.cpp
+› Compiling roundtwo Pods/ReactCodegen » rnscreens-generated.mm
+› Compiling roundtwo Pods/ReactCodegen » rnreanimatedJSI-generated.cpp
+› Compiling roundtwo Pods/ReactCodegen » rnreanimated-generated.mm
+› Compiling roundtwo Pods/ReactCodegen » rngesturehandler_codegenJSI-generated.cpp
+› Compiling roundtwo Pods/ReactCodegen » rngesturehandler_codegen-generated.mm
+› Compiling roundtwo Pods/ReactCodegen » rnasyncstorageJSI-generated.cpp
+› Compiling roundtwo Pods/ReactCodegen » rnasyncstorage-generated.mm
+› Compiling roundtwo Pods/ReactCodegen » States.cpp
+› Compiling roundtwo Pods/ReactCodegen » States.cpp
+› Compiling roundtwo Pods/ReactCodegen » States.cpp
+› Compiling roundtwo Pods/ReactCodegen » States.cpp
+› Compiling roundtwo Pods/ReactCodegen » States.cpp
+› Compiling roundtwo Pods/ReactCodegen » States.cpp
+› Compiling roundtwo Pods/ReactCodegen » States.cpp
+› Compiling roundtwo Pods/ReactCodegen » ShadowNodes.cpp
+› Compiling roundtwo Pods/ReactCodegen » ShadowNodes.cpp
+› Compiling roundtwo Pods/ReactCodegen » ShadowNodes.cpp
+› Compiling roundtwo Pods/ReactCodegen » ShadowNodes.cpp
+› Compiling roundtwo Pods/ReactCodegen » ShadowNodes.cpp
+› Compiling roundtwo Pods/ReactCodegen » ShadowNodes.cpp
+› Compiling roundtwo Pods/ReactCodegen » ShadowNodes.cpp
+› Compiling roundtwo Pods/ReactCodegen » RNVectorIconsSpecJSI-generated.cpp
+› Compiling roundtwo Pods/ReactCodegen » RNVectorIconsSpec-generated.mm
+› Compiling roundtwo Pods/ReactCodegen » RNDateTimePickerCGenJSI-generated.cpp
+› Compiling roundtwo Pods/ReactCodegen » Props.cpp
+› Compiling roundtwo Pods/ReactCodegen » Props.cpp
+› Compiling roundtwo Pods/ReactCodegen » Props.cpp
+› Compiling roundtwo Pods/ReactCodegen » Props.cpp
+› Compiling roundtwo Pods/ReactCodegen » Props.cpp
+› Compiling roundtwo Pods/ReactCodegen » Props.cpp
+› Compiling roundtwo Pods/ReactCodegen » FBReactNativeSpecJSI-generated.cpp
+› Compiling roundtwo Pods/ReactCodegen » FBReactNativeSpec-generated.mm
+› Compiling roundtwo Pods/ReactCodegen » EventEmitters.cpp
+› Compiling roundtwo Pods/ReactCodegen » EventEmitters.cpp
+› Compiling roundtwo Pods/ReactCodegen » EventEmitters.cpp
+› Compiling roundtwo Pods/ReactCodegen » EventEmitters.cpp
+› Compiling roundtwo Pods/ReactCodegen » EventEmitters.cpp
+› Compiling roundtwo Pods/ReactCodegen » EventEmitters.cpp
+› Compiling roundtwo Pods/ReactCodegen » ComponentDescriptors.cpp
+› Compiling roundtwo Pods/ReactCodegen » ComponentDescriptors.cpp
+› Compiling roundtwo Pods/ReactCodegen » ComponentDescriptors.cpp
+› Compiling roundtwo Pods/ReactCodegen » AgoraRtcNgSpecJSI-generated.cpp
+› Compiling roundtwo Pods/ReactCodegen » AgoraRtcNgSpec-generated.mm
+› Executing roundtwo Pods/ReactCodegen » Create Symlinks to Header Folders
+› Signing   roundtwo Pods/ReactCodegen » ReactCodegen.framework
+› Compiling react-native Pods/React-RCTLinking » RCTLinkingManager.mm
+› Compiling react-native Pods/React-RCTNetwork » RCTNetworking.mm
+› Compiling react-native Pods/React-RCTSettings » RCTSettingsManager.mm
+› Compiling react-native Pods/React-RCTVibration » RCTVibration.mm
+› Compiling react-native Pods/React-RCTAnimation » RCTNativeAnimatedTurboModule.mm
+› Compiling react-native Pods/React-RCTAnimation » RCTNativeAnimatedModule.mm
+› Compiling react-native Pods/React-RCTImage » RCTImageLoader.mm
+› Compiling react-native Pods/React-RCTImage » RCTImageStoreManager.mm
+› Compiling react-native Pods/React-RCTImage » RCTImageEditingManager.mm
+› Compiling react-native Pods/React-RCTBlob » RCTFileReaderModule.mm
+› Compiling react-native Pods/React-RCTBlob » RCTBlobManager.mm
+› Preparing react-native Pods/React-RCTVibration » React-RCTVibration-Info.plist
+› Preparing react-native Pods/React-RCTSettings » React-RCTSettings-Info.plist
+› Preparing react-native Pods/React-RCTNetwork » React-RCTNetwork-Info.plist
+› Preparing react-native Pods/React-RCTLinking » React-RCTLinking-Info.plist
+› Preparing react-native Pods/React-RCTAnimation » React-RCTAnimation-Info.plist
+› Preparing react-native Pods/React-FabricComponents » React-FabricComponents-Info.plist
+› Compiling react-native Pods/React-CoreModules » RCTStatusBarManager.mm
+› Compiling react-native Pods/React-CoreModules » RCTTiming.mm
+› Compiling react-native Pods/React-CoreModules » RCTWebSocketModule.mm
+› Compiling react-native Pods/React-CoreModules » RCTSourceCode.mm
+› Compiling react-native Pods/React-CoreModules » RCTRedBox.mm
+› Compiling react-native Pods/React-CoreModules » RCTPlatform.mm
+› Compiling react-native Pods/React-CoreModules » RCTLogBox.mm
+› Compiling react-native Pods/React-CoreModules » RCTKeyboardObserver.mm
+› Compiling react-native Pods/React-CoreModules » RCTI18nManager.mm
+› Compiling react-native Pods/React-CoreModules » RCTExceptionsManager.mm
+› Compiling react-native Pods/React-CoreModules » RCTDeviceInfo.mm
+› Compiling react-native Pods/React-CoreModules » RCTDevSettings.mm
+› Compiling react-native Pods/React-CoreModules » RCTDevMenu.mm
+› Compiling react-native Pods/React-CoreModules » RCTDevLoadingView.mm
+› Compiling react-native Pods/React-CoreModules » RCTClipboard.mm
+› Compiling react-native Pods/React-CoreModules » RCTAppearance.mm
+› Compiling react-native Pods/React-CoreModules » RCTAppState.mm
+› Compiling react-native Pods/React-CoreModules » RCTAlertManager.mm
+› Compiling react-native Pods/React-CoreModules » RCTActionSheetManager.mm
+› Compiling react-native Pods/React-CoreModules » RCTAccessibilityManager.mm
+› Signing   react-native Pods/React-RCTVibration » RCTVibration.framework
+› Signing   react-native Pods/React-RCTSettings » RCTSettings.framework
+› Signing   react-native Pods/React-RCTLinking » RCTLinking.framework
+› Signing   react-native Pods/React-RCTAnimation » RCTAnimation.framework
+› Signing   react-native Pods/React-RCTNetwork » RCTNetwork.framework
+› Executing react-native Pods/React-FabricComponents » [CP-User] [RN]Check rncore
+› Preparing react-native Pods/React-RCTImage » React-RCTImage-Info.plist
+› Preparing react-native Pods/React-RCTBlob » React-RCTBlob-Info.plist
+› Executing react-native Pods/React-FabricComponents » Create Symlinks to Header Folders
+› Signing   react-native Pods/React-RCTBlob » RCTBlob.framework
+› Signing   react-native Pods/React-RCTImage » RCTImage.framework
+› Compiling react-native Pods/React-RCTFabric » RCTComponentViewFactory.mm
+› Compiling react-native Pods/React-RCTFabric » RCTUnimplementedViewComponentView.mm
+› Compiling react-native Pods/React-RCTFabric » RCTThirdPartyFabricComponentsProvider.mm
+› Compiling react-native Pods/React-RCTFabric » RCTTextInputComponentView.mm
+› Compiling react-native Pods/React-RCTFabric » RCTSwitchComponentView.mm
+› Compiling react-native Pods/React-RCTFabric » RCTScrollViewComponentView.mm
+› Compiling react-native Pods/React-RCTFabric » RCTSafeAreaViewComponentView.mm
+› Compiling react-native Pods/React-RCTFabric » RCTPullToRefreshViewComponentView.mm
+› Compiling react-native Pods/React-RCTFabric » RCTParagraphComponentView.mm
+› Compiling react-native Pods/React-RCTFabric » RCTParagraphComponentAccessibilityProvider.mm
+› Compiling react-native Pods/React-RCTFabric » RCTInputAccessoryComponentView.mm
+› Compiling react-native Pods/React-RCTFabric » RCTFabricComponentsPlugins.mm
+› Compiling react-native Pods/React-RCTFabric » RCTDebuggingOverlayComponentView.mm
+› Compiling react-native Pods/React-RCTFabric » RCTActivityIndicatorViewComponentView.mm
+› Compiling react-native-webview Pods/react-native-webview » RNCWebViewModule.mm
+› Compiling react-native-webview Pods/react-native-webview » RNCWebView.mm
+› Compiling react-native-safe-area-context Pods/react-native-safe-area-context » RNCSafeAreaContext.mm
+› Compiling react-native-safe-area-context Pods/react-native-safe-area-context » RNCSafeAreaViewState.cpp
+› Compiling react-native-safe-area-context Pods/react-native-safe-area-context » RNCSafeAreaViewShadowNode.cpp
+› Compiling react-native-safe-area-context Pods/react-native-safe-area-context » RNCSafeAreaViewComponentView.mm
+› Compiling react-native-safe-area-context Pods/react-native-safe-area-context » RNCSafeAreaProviderComponentView.mm
+› Compiling react-native-agora Pods/react-native-agora » AgoraRtcSurfaceViewManager.mm
+› Compiling react-native-agora Pods/react-native-agora » AgoraRtcSurfaceView.mm
+› Compiling react-native-agora Pods/react-native-agora » AgoraRtcNg.mm
+› Preparing react-native Pods/React-RCTFabric » React-RCTFabric-Info.plist
+› Preparing react-native Pods/React-CoreModules » React-CoreModules-Info.plist
+› Compiling react-native-vector-icons Pods/RNVectorIcons » RNVectorIconsManager.mm
+› Compiling react-native-screens Pods/RNScreens » RNSSearchBar.mm
+› Compiling react-native-screens Pods/RNScreens » RNSScreenStackHeaderSubviewShadowNode.cpp
+› Compiling react-native-screens Pods/RNScreens » RNSScreenStackHeaderSubview.mm
+› Compiling react-native-screens Pods/RNScreens » RNSScreenStackHeaderConfigShadowNode.cpp
+› Compiling react-native-screens Pods/RNScreens » RNSScreenStackHeaderConfig.mm
+› Compiling react-native-screens Pods/RNScreens » RNSScreenStack.mm
+› Compiling react-native-screens Pods/RNScreens » RNSScreenShadowNode.cpp
+› Compiling react-native-screens Pods/RNScreens » RNSScreenNavigationContainer.mm
+› Compiling react-native-screens Pods/RNScreens » RNSScreenFooter.mm
+› Compiling react-native-screens Pods/RNScreens » RNSScreenContentWrapper.mm
+› Compiling react-native-screens Pods/RNScreens » RNSScreenContainer.mm
+› Compiling react-native-screens Pods/RNScreens » RNSScreen.mm
+› Compiling react-native-screens Pods/RNScreens » RNSModule.mm
+› Compiling react-native-screens Pods/RNScreens » RNSModalScreenShadowNode.cpp
+› Compiling react-native-screens Pods/RNScreens » RNSModalScreen.mm
+› Compiling react-native-screens Pods/RNScreens » RNSFullWindowOverlay.mm
+› Compiling react-native-screens Pods/RNScreens » RNSConvert.mm
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNGestureHandlerRootViewComponentView.mm
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNGestureHandlerModule.mm
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNGestureHandlerButtonComponentView.mm
+› Compiling react-native-gesture-handler Pods/RNGestureHandler » RNGestureHandlerButton.mm
+› Compiling @react-native-community/datetimepicker Pods/RNDateTimePicker » ShadowNodes.cpp
+› Compiling @react-native-community/datetimepicker Pods/RNDateTimePicker » RNDateTimePickerComponentView.mm
+› Compiling @react-native-picker/picker Pods/RNCPicker » RNCPickerManager.mm
+› Compiling @react-native-picker/picker Pods/RNCPicker » RNCPickerComponentView.mm
+› Compiling @react-native-picker/picker Pods/RNCPicker » RNCPicker.mm
+› Compiling @react-native-async-storage/async-storage Pods/RNCAsyncStorage » RNCAsyncStorage.mm
+› Preparing @react-native-community/masked-view Pods/RNCMaskedView » RNCMaskedView-Info.plist
+› Signing   react-native Pods/React-CoreModules » CoreModules.framework
+› Signing   react-native Pods/React-RCTFabric » RCTFabric.framework
+› Preparing react-native-webview Pods/react-native-webview » react-native-webview-Info.plist
+› Preparing react-native-safe-area-context Pods/react-native-safe-area-context » react-native-safe-area-context-Info.plist
+› Preparing react-native-agora Pods/react-native-agora » react-native-agora-Info.plist
+› Preparing react-native Pods/React-microtasksnativemodule » React-microtasksnativemodule-Info.plist
+› Compiling react-native Pods/React-microtasksnativemodule » NativeMicrotasks.cpp
+› Preparing react-native Pods/React-idlecallbacksnativemodule » React-idlecallbacksnativemodule-Info.plist
+› Preparing react-native Pods/React-featureflagsnativemodule » React-featureflagsnativemodule-Info.plist
+› Preparing react-native Pods/React-domnativemodule » React-domnativemodule-Info.plist
+› Preparing react-native Pods/React-RuntimeApple » React-RuntimeApple-Info.plist
+› Preparing react-native-vector-icons Pods/RNVectorIcons » RNVectorIcons-Info.plist
+› Preparing react-native-screens Pods/RNScreens » RNScreens-Info.plist
+› Preparing react-native-reanimated Pods/RNReanimated » RNReanimated-Info.plist
+› Preparing react-native-gesture-handler Pods/RNGestureHandler » RNGestureHandler-Info.plist
+› Preparing @react-native-community/datetimepicker Pods/RNDateTimePicker » RNDateTimePicker-Info.plist
+› Preparing @react-native-picker/picker Pods/RNCPicker » RNCPicker-Info.plist
+› Preparing @react-native-async-storage/async-storage Pods/RNCAsyncStorage » RNCAsyncStorage-Info.plist
+› Compiling react-native Pods/React-idlecallbacksnativemodule » NativeIdleCallbacks.cpp
+› Compiling react-native Pods/React-featureflagsnativemodule » NativeReactNativeFeatureFlags.cpp
+› Compiling react-native Pods/React-domnativemodule » NativeDOM.cpp
+› Signing   react-native-webview Pods/react-native-webview » react_native_webview.framework
+› Signing   react-native-safe-area-context Pods/react-native-safe-area-context » react_native_safe_area_context.framework
+› Executing react-native Pods/React-RuntimeApple » Create Symlinks to Header Folders
+› Signing   react-native-agora Pods/react-native-agora » react_native_agora.framework
+› Signing   react-native-vector-icons Pods/RNVectorIcons » RNVectorIcons.framework
+› Signing   react-native-screens Pods/RNScreens » RNScreens.framework
+› Signing   react-native-gesture-handler Pods/RNGestureHandler » RNGestureHandler.framework
+› Compiling react-native-reanimated Pods/RNReanimated » REANodesManager.mm
+› Compiling react-native-reanimated Pods/RNReanimated » REAModule.mm
+› Compiling react-native-reanimated Pods/RNReanimated » REAInitializerRCTFabricSurface.mm
+› Compiling react-native-reanimated Pods/RNReanimated » PlatformDepMethodsHolderImpl.mm
+› Compiling react-native-reanimated Pods/RNReanimated » NativeProxy.mm
+› Executing react-native Pods/React-microtasksnativemodule » Create Symlinks to Header Folders
+› Signing   react-native Pods/React-microtasksnativemodule » React_microtasksnativemodule.framework
+› Signing   @react-native-community/datetimepicker Pods/RNDateTimePicker » RNDateTimePicker.framework
+› Signing   @react-native-async-storage/async-storage Pods/RNCAsyncStorage » RNCAsyncStorage.framework
+› Executing react-native Pods/React-featureflagsnativemodule » Create Symlinks to Header Folders
+› Signing   react-native Pods/React-featureflagsnativemodule » React_featureflagsnativemodule.framework
+› Signing   @react-native-picker/picker Pods/RNCPicker » RNCPicker.framework
+› Executing react-native Pods/React-idlecallbacksnativemodule » Create Symlinks to Header Folders
+› Signing   react-native Pods/React-idlecallbacksnativemodule » idlecallbacksnativemodule.framework
+› Executing react-native Pods/React-domnativemodule » Create Symlinks to Header Folders
+› Signing   react-native Pods/React-domnativemodule » React_domnativemodule.framework
+› Preparing react-native Pods/React-defaultsnativemodule » React-defaultsnativemodule-Info.plist
+› Compiling react-native Pods/React-defaultsnativemodule » DefaultTurboModules.cpp
+› Executing react-native Pods/React-defaultsnativemodule » Create Symlinks to Header Folders
+› Signing   react-native Pods/React-defaultsnativemodule » React_defaultsnativemodule.framework
+› Compiling react-native Pods/React-RCTAppDelegate » RCTAppSetupUtils.mm
+› Preparing react-native Pods/React-RCTAppDelegate » React-RCTAppDelegate-Info.plist
+› Executing react-native-reanimated Pods/RNReanimated » Create Symlinks to Header Folders
+› Signing   react-native-reanimated Pods/RNReanimated » RNReanimated.framework
+› Signing   react-native Pods/React-RCTAppDelegate » React_RCTAppDelegate.framework
+› Preparing expo-modules-core Pods/ExpoModulesCore » ExpoModulesCore-Info.plist
+› Preparing expo-web-browser Pods/ExpoWebBrowser » ExpoWebBrowser-Info.plist
+› Preparing expo-random Pods/ExpoRandom » ExpoRandom-Info.plist
+› Preparing expo-print Pods/ExpoPrint » ExpoPrint-Info.plist
+› Preparing expo-location Pods/ExpoLocation » ExpoLocation-Info.plist
+› Preparing expo-linking Pods/ExpoLinking » ExpoLinking-Info.plist
+› Preparing expo-keep-awake Pods/ExpoKeepAwake » ExpoKeepAwake-Info.plist
+› Preparing expo-image-picker Pods/ExpoImagePicker » ExpoImagePicker-Info.plist
+› Preparing expo-font Pods/ExpoFont » ExpoFont-Info.plist
+› Preparing expo-file-system Pods/ExpoFileSystem » ExpoFileSystem-Info.plist
+› Preparing expo-camera Pods/ExpoCamera » ExpoCamera-Info.plist
+› Preparing expo-crypto Pods/ExpoCrypto » ExpoCrypto-Info.plist
+› Executing expo-constants Pods/EXConstants » [CP-User] Generate app.config for prebuilt Constants.manifest
+› Preparing expo-asset Pods/ExpoAsset » ExpoAsset-Info.plist
+› Preparing expo-apple-authentication Pods/ExpoAppleAuthentication » ExpoAppleAuthentication-Info.plist
+› Preparing expo Pods/Expo » Expo-Info.plist
+› Preparing expo-updates-interface Pods/EXUpdatesInterface » EXUpdatesInterface-Info.plist
+› Preparing expo-manifests Pods/EXManifests » EXManifests-Info.plist
+› Preparing expo-image-loader Pods/EXImageLoader » EXImageLoader-Info.plist
+› Preparing expo-firebase-core Pods/EXFirebaseCore » EXFirebaseCore-Info.plist
+› Preparing expo-constants Pods/EXConstants » EXConstants-Info.plist
+› Preparing expo-application Pods/EXApplication » EXApplication-Info.plist
+› Preparing expo-av Pods/EXAV » EXAV-Info.plist
+› Preparing expo-image-manipulator Pods/ExpoImageManipulator » ExpoImageManipulator-Info.plist
+› Preparing expo-dev-menu Pods/expo-dev-menu » expo-dev-menu-Info.plist
+› Preparing expo-dev-launcher Pods/expo-dev-launcher » expo-dev-launcher-Info.plist
+› Preparing Pods/Pods-roundtwo » Pods-roundtwo-Info.plist
+› Executing roundtwo » [CP] Check Pods Manifest.lock
+› Executing roundtwo » [Expo] Configure project
+› Compiling roundtwo » SplashScreen.storyboard
+› Preparing roundtwo » Info.plist
+› Linking   roundtwo » Plateful.debug.dylib
+⚠️  ld: ignoring duplicate libraries: '-lc++'
+› Generating debug roundtwo » Plateful.app.dSYM
+› Linking   roundtwo » Plateful
+› Generating debug roundtwo » Plateful.app.dSYM
+› Executing roundtwo » Bundle React Native code and images
+› Executing roundtwo » [CP] Copy Pods Resources
+› Executing roundtwo » [CP] Embed Pods Frameworks
+› Signing   roundtwo » Plateful.debug.dylib
+› Signing   roundtwo » __preview.dylib
+› Signing   roundtwo » Plateful.app
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'fmt' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'Yoga' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-rendererconsistency' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-nativeconfig' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-featureflags' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-debug' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-Mapbuffer' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'RCT-Folly' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-rendererdebug' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-utils' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'ReactCommon' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-performancetimeline' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-jserrorhandler' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-graphics' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-runtimescheduler' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-RuntimeCore' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-RuntimeHermes' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-NativeModulesApple' from project 'Pods')
+    Run script build phase '[CP-User] [RN]Check rncore' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-Fabric' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-Fabric' from project 'Pods')
+    Run script build phase '[CP-User] [RN]Check rncore' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-FabricComponents' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-FabricComponents' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-microtasksnativemodule' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-idlecallbacksnativemodule' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-featureflagsnativemodule' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-domnativemodule' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-RuntimeApple' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'RNReanimated' from project 'Pods')
+    Run script build phase 'Create Symlinks to Header Folders' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'React-defaultsnativemodule' from project 'Pods')
+› Build Succeeded
+
+› 0 error(s), and 34 warning(s)
+
+Waiting on http://localhost:8081
+› Installing /Users/chrisintorcia/Library/Developer/Xcode/DerivedData/roundtwo-bjuahhpedusqdveareumsnqbuwjo/Build/Products/Debug-iphonesimulator/Plateful.app
+› Installing on iPhone 16 Pro
+› Opening on iPhone 16 Pro (com.chrisintorcia.roundtwo)
+› Opening exp+roundtwo://expo-development-client/?url=http%3A%2F%2F192.168.1.13%3A8081 on iPhone 16 Pro

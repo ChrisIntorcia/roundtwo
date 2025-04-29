@@ -12,7 +12,6 @@ const SellerDetailsScreen = ({ navigation }) => {
 
   useEffect(() => {
     const user = auth.currentUser;
-    console.log("SellerDetailsScreen loaded for user:", user ? user.uid : "No authenticated user");
 
     if (!user) {
       Alert.alert("Error", "Unauthorized access.");
@@ -40,12 +39,6 @@ const SellerDetailsScreen = ({ navigation }) => {
       const userData = userSnap.data();
       const username = userData?.username || user.email.split('@')[0];
 
-      console.log("Updating Firestore user document with:", {
-        vendorName,
-        vendorLocation,
-        isSeller: true,
-      });
-
       await setDoc(userRef, {
         vendorName,
         vendorLocation,
@@ -60,7 +53,6 @@ const SellerDetailsScreen = ({ navigation }) => {
         vendorLocation
       }, { merge: true });
 
-      console.log("User successfully added to sellers collection.");
       becomeSeller(vendorName, vendorLocation);
       Alert.alert("Success", "Your seller details have been saved!");
       navigation.navigate("MainApp", { screen: "Home" });
@@ -71,45 +63,46 @@ const SellerDetailsScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <CustomHeader title="Seller Setup" showBack />
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <Text style={styles.title}>Seller Details</Text>
-  
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Vendor Name:</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter Vendor Name"
-              value={vendorName}
-              onChangeText={(text) =>
-                setRanchName(text.replace(/\b\w/g, (c) => c.toUpperCase()))
-              }
-            />
-          </View>
-  
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Vendor Location:</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter Vendor Location"
-              value={vendorLocation}
-              onChangeText={(text) =>
-                setRanchLocation(text.replace(/\b\w/g, (c) => c.toUpperCase()))
-              }
-            />
-          </View>
-  
-          <Button title="Submit" onPress={handleSubmit} />
-        </ScrollView>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
-    </View>
+<View style={{ flex: 1 }}>
+  <CustomHeader title="Seller Setup" showBack />
+  <KeyboardAvoidingView
+    style={{ flex: 1 }}
+    behavior={Platform.OS === "ios" ? "padding" : undefined}
+    keyboardVerticalOffset={60} // tweak if your header height is different
+  >
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20 }} keyboardShouldPersistTaps="handled">
+        <Text style={styles.title}>Seller Details</Text>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Vendor Name:</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter Vendor Name"
+            value={vendorName}
+            onChangeText={(text) =>
+              setRanchName(text.replace(/\b\w/g, (c) => c.toUpperCase()))
+            }
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Vendor Location:</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter Vendor Location"
+            value={vendorLocation}
+            onChangeText={(text) =>
+              setRanchLocation(text.replace(/\b\w/g, (c) => c.toUpperCase()))
+            }
+          />
+        </View>
+
+        <Button title="Submit" onPress={handleSubmit} />
+      </ScrollView>
+    </TouchableWithoutFeedback>
+  </KeyboardAvoidingView>
+</View>
   );  
 };
 

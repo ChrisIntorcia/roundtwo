@@ -109,11 +109,9 @@ export default function ViewerScreen({ route, navigation }) {
         engine.registerEventHandler({
           onJoinChannelSuccess: () => setJoined(true),
           onUserJoined: (connection, uid) => {
-            console.log('✅ Broadcaster joined:', uid);
             setRemoteUid(uid);
           },
           onUserOffline: () => setRemoteUid(null),
-          onError: (err) => console.log('🚨 Agora Error:', err),
         });
 
         engine.joinChannel(token, channel, viewerUid, {
@@ -166,7 +164,6 @@ export default function ViewerScreen({ route, navigation }) {
       
           const docRef = doc(db, 'users', firebaseUid);
           const userDoc = await getDoc(docRef);
-          console.log('👤 Broadcaster Firestore data:', userDoc.data());
       
           if (userDoc.exists()) {
             setBroadcaster({ id: userDoc.id, ...userDoc.data() });
@@ -327,54 +324,62 @@ export default function ViewerScreen({ route, navigation }) {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       const shipping = userDoc.data()?.shippingAddress;
       const hasCard = userDoc.data()?.hasSavedPaymentMethod;
-    
+  
       if (!shipping || !hasCard) {
         return Alert.alert(
           'Missing Info',
           'You are required to have payment and shipping info to purchase this item.'
         );
       }
-    
+  
+      if (!selectedProduct.bulkPrice || !selectedProduct.stripeAccountId) {
+        throw new Error('Missing product details.');
+      }
+      if (!user.email) {
+        throw new Error('Missing buyer email.');
+      }
+  
       const res = await fetch('https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentIntent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: Math.round(selectedProduct.bulkPrice * 100 * purchaseQty),
+          productId: selectedProduct.id,
           buyerEmail: user.email,
           stripeAccountId: selectedProduct.stripeAccountId,
           application_fee_amount: Math.round(selectedProduct.bulkPrice * 100 * purchaseQty * 0.1),
         }),
       });
-    
+      
+  
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Payment failed.');
       }
-    
+  
       setShowConfetti(true);
       const buyerUsername =
-      userDoc.data()?.username ||
-      userDoc.data()?.displayName ||
-      user.email.split('@')[0];
-    
-    setPurchaseBanner(`${buyerUsername} Purchase Complete! "${selectedProduct.title}"`);
-    
-    await addDoc(collection(db, 'users', user.uid, 'purchases'), {
-      productId: selectedProduct.id,
-      title: selectedProduct.title,
-      price: selectedProduct.bulkPrice * purchaseQty,
-      quantity: purchaseQty,
-      sellerId: selectedProduct.sellerId,
-      channel,
-      purchasedAt: new Date(),
-    });
-    
+        userDoc.data()?.username ||
+        userDoc.data()?.displayName ||
+        user.email.split('@')[0];
+  
+      setPurchaseBanner(`${buyerUsername} Purchase Complete! "${selectedProduct.title}"`);
+  
+      await addDoc(collection(db, 'users', user.uid, 'purchases'), {
+        productId: selectedProduct.id,
+        title: selectedProduct.title,
+        price: selectedProduct.bulkPrice * purchaseQty,
+        quantity: purchaseQty,
+        sellerId: selectedProduct.sellerId,
+        channel,
+        purchasedAt: new Date(),
+      });
+  
       const streamDoc = await getDoc(doc(db, 'livestreams', channel));
       if (!streamDoc.exists()) {
         throw new Error('Stream not found.');
       }
       const streamTitle = streamDoc.data()?.title || '';
-    
+  
       await addDoc(collection(db, 'orders'), {
         buyerId: user.uid,
         buyerEmail: user.email,
@@ -389,41 +394,41 @@ export default function ViewerScreen({ route, navigation }) {
         fulfilled: false,
         purchasedAt: new Date(),
       });
-    
+  
       const productId = selectedProduct.id;
       const newQty = selectedProduct.groupAmount - purchaseQty;
-    
+  
       const productRefGlobal = doc(db, 'products', productId);
       const productRefUser = doc(db, 'users', selectedProduct.sellerId, 'products', productId);
-    
+  
       await runTransaction(db, async (transaction) => {
         const globalSnap = await transaction.get(productRefGlobal);
         const userSnap = await transaction.get(productRefUser);
-      
+  
         const currentQty = globalSnap.data()?.quantity;
         if (currentQty === undefined || currentQty < purchaseQty) {
           throw new Error('Not enough stock');
         }
-      
+  
         transaction.update(productRefGlobal, { quantity: currentQty - purchaseQty });
-      
+  
         if (userSnap.exists()) {
           transaction.update(productRefUser, { quantity: currentQty - purchaseQty });
         }
       });
-      
+  
     } catch (err) {
       console.error("🔥 handleBuy error:", err.message);
       Alert.alert("Purchase Failed", err.message);
     } finally {
       swipeRef.current?.reset();
-    
       setTimeout(() => {
         setShowConfetti(false);
         setPurchaseBanner(null);
       }, 3000);
     }
   }
+  
   const displayUid = remoteUid || broadcasterUidRef.current;
 
   if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: '#000' }} color="#E76A54" />;

@@ -10,12 +10,13 @@ import {
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
+  ActivityIndicator,
 } from "react-native";
 import { auth, db, firebaseConfig } from "../../firebaseConfig";
 import { PhoneAuthProvider, linkWithCredential } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
-import { useNavigation } from "@react-navigation/native";
 import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
+import { useNavigation } from "@react-navigation/native";
 
 export default function VerifyPhone() {
   const navigation = useNavigation();
@@ -25,6 +26,7 @@ export default function VerifyPhone() {
   const [code, setCode] = useState("");
   const [verificationId, setVerificationId] = useState(null);
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
 
   const formatPhone = (input) => {
     const cleaned = input.replace(/[^0-9]/g, "");
@@ -34,55 +36,77 @@ export default function VerifyPhone() {
   };
 
   const handlePhoneChange = (text) => {
-    const digits = text.replace(/[^0-9]/g, "");
-    setPhone(formatPhone(digits));
+    setPhone(formatPhone(text));
   };
 
   const sendCode = async () => {
+    const cleaned = phone.replace(/[^0-9]/g, "");
+    if (cleaned.length !== 10) {
+      Alert.alert("Invalid Number", "Please enter a valid 10-digit US phone number.");
+      return;
+    }
+    setLoading(true);
     try {
-      const cleaned = phone.replace(/[^0-9]/g, "");
-      if (cleaned.length !== 10) {
-        Alert.alert("Invalid Number", "Please enter a valid 10-digit US phone number.");
-        return;
-      }
-
-      const provider = new PhoneAuthProvider(auth);
       const formattedPhone = `+1${cleaned}`;
-      const id = await provider.verifyPhoneNumber(formattedPhone, recaptchaVerifier.current);
+      const provider = new PhoneAuthProvider(auth);
+      const id = await provider.verifyPhoneNumber(
+        formattedPhone,
+        recaptchaVerifier.current
+      );
       setVerificationId(id);
       setStep(2);
     } catch (error) {
-      console.error("Verification error:", error);
-      Alert.alert("Error", error.message);
+      Alert.alert("Error Sending Code", error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   const confirmCode = async () => {
+    if (!verificationId) {
+      Alert.alert("Error", "Please request a verification code first.");
+      return;
+    }
+    if (code.trim().length === 0) {
+      Alert.alert("Error", "Please enter the verification code.");
+      return;
+    }
+    setLoading(true);
     try {
-      const credential = PhoneAuthProvider.credential(verificationId, code);
+      const credential = PhoneAuthProvider.credential(verificationId, code.trim());
       const currentUser = auth.currentUser;
-
       if (!currentUser) {
         Alert.alert("Error", "You must be logged in to verify your phone number.");
         return;
       }
 
-      await linkWithCredential(currentUser, credential);
+      const alreadyLinked = currentUser.providerData.some(
+        (provider) => provider.providerId === "phone"
+      );
+
+      if (!alreadyLinked) {
+        await linkWithCredential(currentUser, credential);
+      } else {
+        console.log("Phone already linked, skipping linkWithCredential.");
+      }
+
+      const cleanedPhone = phone.replace(/[^0-9]/g, "");
 
       await setDoc(
         doc(db, "users", currentUser.uid),
         {
           phoneVerified: true,
-          phoneNumber: `+1${phone.replace(/[^0-9]/g, "")}`,
+          phoneNumber: currentUser.phoneNumber || `+1${cleanedPhone}`,
         },
         { merge: true }
       );
 
-      Alert.alert("✅ Success", "Your phone number has been verified.");
+      Alert.alert("Success", "Your phone number has been verified.");
       navigation.goBack();
     } catch (error) {
-      console.error("Code confirmation error:", error);
-      Alert.alert("Error", error.message);
+      Alert.alert("Error Confirming Code", error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -96,13 +120,16 @@ export default function VerifyPhone() {
           <FirebaseRecaptchaVerifierModal
             ref={recaptchaVerifier}
             firebaseConfig={firebaseConfig}
+            attemptInvisibleVerification={true}
           />
 
           <Text style={styles.header}>Verify Phone</Text>
 
           {step === 1 && (
             <>
-              <Text style={styles.label}>US phone numbers only. No need to type +1.</Text>
+              <Text style={styles.label}>
+                US phone numbers only. No need to type +1.
+              </Text>
               <View style={styles.phoneRow}>
                 <View style={styles.prefixBox}>
                   <Text style={styles.prefix}>+1</Text>
@@ -116,8 +143,16 @@ export default function VerifyPhone() {
                   maxLength={12}
                 />
               </View>
-              <TouchableOpacity style={styles.button} onPress={sendCode}>
-                <Text style={styles.buttonText}>Send Verification Code</Text>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={sendCode}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.buttonText}>Send Verification Code</Text>
+                )}
               </TouchableOpacity>
             </>
           )}
@@ -130,9 +165,18 @@ export default function VerifyPhone() {
                 keyboardType="number-pad"
                 value={code}
                 onChangeText={setCode}
+                maxLength={6}
               />
-              <TouchableOpacity style={styles.button} onPress={confirmCode}>
-                <Text style={styles.buttonText}>Confirm Code</Text>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={confirmCode}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.buttonText}>Confirm Code</Text>
+                )}
               </TouchableOpacity>
             </>
           )}
@@ -152,6 +196,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "bold",
     marginBottom: 20,
+    textAlign: "center",
   },
   label: {
     fontSize: 14,

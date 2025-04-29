@@ -34,7 +34,6 @@ const Inventory = () => {
 
   useEffect(() => {
     if (!user) {
-      console.log("❌ No user in context");
       setLoading(false);
       return;
     }
@@ -48,7 +47,6 @@ const Inventory = () => {
       }));
       setProducts(data);
       setLoading(false);
-      console.log("✅ Products fetched:", data.length);
     });
 
     return unsubscribe;

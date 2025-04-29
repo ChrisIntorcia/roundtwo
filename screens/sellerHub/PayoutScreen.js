@@ -22,6 +22,7 @@ const PayoutScreen = () => {
   const [errorMsg, setErrorMsg] = useState(null);
   const db = getFirestore();
   const navigation = useNavigation();
+  const [paymentMethodSaved, setPaymentMethodSaved] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -56,8 +57,9 @@ const PayoutScreen = () => {
       
           if (userSnap.exists()) {
             const data = userSnap.data();
-            setPhoneVerified(data.phoneVerified || false);
             let isVerified = data.stripeVerified || false;
+            setPhoneVerified(data.phoneVerified || false);
+            setPaymentMethodSaved(data.hasSavedPaymentMethod || false);
       
             // 🟡 Double-check with Stripe if not marked verified
             if (!isVerified) {
@@ -223,19 +225,16 @@ const PayoutScreen = () => {
         <Text style={{ color: "red", marginBottom: 20 }}>{errorMsg}</Text>
       )}
 
-      {!phoneVerified ? (
-        <TouchableOpacity onPress={handleVerify} style={styles.verifyButton}>
-          <Text style={styles.verifyText}>Complete Seller Verification</Text>
-        </TouchableOpacity>
-      ) : !stripeVerified ? (
-        <TouchableOpacity onPress={handleStripeSetup} style={styles.verifyButton}>
-          <Text style={styles.verifyText}>Start Stripe Setup</Text>
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity style={styles.linkButton} onPress={handleStripeDashboard}>
-          <Text style={styles.linkButtonText}>Go to Stripe Dashboard</Text>
-        </TouchableOpacity>
-      )}
+{!phoneVerified || !stripeVerified || !paymentMethodSaved ? (
+  <TouchableOpacity onPress={handleVerify} style={styles.verifyButton}>
+    <Text style={styles.verifyText}>Complete Seller Verification</Text>
+  </TouchableOpacity>
+) : (
+  <TouchableOpacity style={styles.linkButton} onPress={handleStripeDashboard}>
+    <Text style={styles.linkButtonText}>Go to Stripe Dashboard</Text>
+  </TouchableOpacity>
+)}
+
     </ScrollView>
     </>
   );

@@ -47,7 +47,6 @@ const BottomTabs = ({ navigation }) => {
           setSellerSetupComplete(false);
         }
       } catch (err) {
-        console.log("Error checking seller details:", err);
       }
     };
 

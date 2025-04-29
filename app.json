@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Plateful",
+    "name": "Stogora",
     "slug": "roundtwo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/Plateful.png",
+    "icon": "./assets/stogora-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "roundtwo",
@@ -12,7 +12,7 @@
       "roundtwo://"
     ],
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/stogora-splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -27,7 +27,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/stogora-adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.chrisintorcia.roundtwo"

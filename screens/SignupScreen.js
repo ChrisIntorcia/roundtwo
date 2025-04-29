@@ -11,13 +11,11 @@ import {
   Platform
 } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
-import * as Google from "expo-auth-session/providers/google";
-import * as WebBrowser from "expo-web-browser";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import { signUp, login, authenticateWithGoogle, signInWithApple } from "../authService";
+import { signUp, login, signInWithApple } from "../authService";
 import { getFriendlyError } from "../utils/authUtils";
-
-WebBrowser.maybeCompleteAuthSession();
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../firebaseConfig";
 
 const SignupScreen = ({ navigation }) => {
   const [fullName, setFullName] = useState("");
@@ -26,27 +24,22 @@ const SignupScreen = ({ navigation }) => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    expoClientId: "<YOUR_EXPO_CLIENT_ID>",
-    iosClientId: "<YOUR_IOS_CLIENT_ID>",
-    androidClientId: "<YOUR_ANDROID_CLIENT_ID>",
-  });
 
   useEffect(() => {
-    if (response?.type === "success") {
-      const { id_token } = response.authentication;
-      authenticateWithGoogle(id_token).then(() => navigation.replace("MainApp"));
-    }
-  }, [response]);
-
-  const handleGoogleSignIn = () => {
-    promptAsync();
-  };
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "MainApp" }],
+        });
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   const handleAppleSignIn = async () => {
     try {
       await signInWithApple();
-      navigation.replace("MainApp");
     } catch (err) {
       console.error(err);
     }
@@ -59,7 +52,6 @@ const SignupScreen = ({ navigation }) => {
     try {
       await signUp(email.trim(), password, fullName);
       await login(email.trim(), password);
-      navigation.replace("MainApp");
     } catch (err) {
       setError(getFriendlyError(err.code));
     } finally {
@@ -77,10 +69,6 @@ const SignupScreen = ({ navigation }) => {
         extraScrollHeight={20}
       >
         <Text style={styles.title}>Sign Up</Text>
-
-        <TouchableOpacity onPress={handleGoogleSignIn} style={styles.oauthButton}>
-          <Text style={styles.oauthText}>Continue with Google</Text>
-        </TouchableOpacity>
 
         {Platform.OS === "ios" && (
           <AppleAuthentication.AppleAuthenticationButton
@@ -138,8 +126,6 @@ const styles = StyleSheet.create({
   link: { color: "#000", marginTop: 16, textAlign: "center" },
   linkBold: { color: "blue", fontWeight: "500" },
   orText: { textAlign: "center", marginVertical: 20, color: "#999" },
-  oauthButton: { backgroundColor: "#fff", borderColor: "#ccc", borderWidth: 1, padding: 12, borderRadius: 32, marginTop: 12, alignItems: "center" },
-  oauthText: { color: "#000", fontWeight: "500" },
   appleButton: { width: "100%", height: 44, marginTop: 12 },
   signupButton: { backgroundColor: "#E76A54", padding: 14, borderRadius: 32, alignItems: "center", marginTop: 16 },
   signupText: { color: "#fff", fontWeight: "bold" }
