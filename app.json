@@ -2,21 +2,20 @@
   "expo": {
     "name": "Stogora",
     "slug": "roundtwo",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/stogora-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "roundtwo",
-    "deepLinks": [
-      "roundtwo://"
-    ],
+    "deepLinks": ["roundtwo://"],
     "splash": {
       "image": "./assets/stogora-splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "buildNumber": "2",
       "supportsTablet": true,
       "bundleIdentifier": "com.chrisintorcia.roundtwo",
       "infoPlist": {

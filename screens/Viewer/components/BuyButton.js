@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, ActivityIndicator, Alert } from 'react-native';
 import SwipeButton from 'rn-swipe-button';
 import styles from '../viewerstyles';
+import { auth } from '../../../firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 
-export default function BuyButton({
+const BuyButton = React.forwardRef(({
   selectedProduct,
   purchaseQty,
   setPurchaseQty,
   handleBuy,
   swipeKey,
   setSwipeKey,
-  swipeRef
-}) {
+  isPurchasing,
+  db,
+  navigation
+}, ref) => {
   const [error, setError] = useState(null);
   const shakeAnimation = new Animated.Value(0);
 
@@ -19,6 +23,8 @@ export default function BuyButton({
 
   const isSoldOut = selectedProduct.quantity <= 0;
   const maxQuantity = Math.min(selectedProduct.quantity, 10);
+  const shippingRate = selectedProduct.shippingRate || 0;
+  const totalPrice = (selectedProduct.bulkPrice + shippingRate) * purchaseQty;
 
   const handleQuantityChange = (increment) => {
     const newQty = increment ? purchaseQty + 1 : purchaseQty - 1;
@@ -34,14 +40,49 @@ export default function BuyButton({
   };
 
   const handleBuySuccess = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+      Alert.alert('Login Required', 'Please log in to make a purchase.');
+      ref.current?.reset();
+      return;
+    }
+
+    // Check for payment and shipping info
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    const shipping = userDoc.data()?.shippingAddress;
+    const hasCard = userDoc.data()?.hasSavedPaymentMethod;
+
+    if (!shipping || !hasCard) {
+      Alert.alert(
+        'Setup Required',
+        'You need to add payment and shipping information before making a purchase.',
+        [
+          {
+            text: 'Add Payment Info',
+            onPress: () => {
+              ref.current?.reset();
+              navigation.navigate('PaymentsShipping');
+            }
+          },
+          {
+            text: 'Cancel',
+            onPress: () => ref.current?.reset(),
+            style: 'cancel'
+          }
+        ]
+      );
+      return;
+    }
+
     try {
-      await handleBuy(purchaseQty);
-      swipeRef.current?.reset();
-      setSwipeKey(Date.now());
       setError(null);
+      await handleBuy(purchaseQty);
+      setSwipeKey(Date.now());
     } catch (err) {
-      setError('Failed to process purchase. Please try again.');
-      swipeRef.current?.reset();
+      console.error('Buy error:', err);
+      setError(err.message || 'Failed to process purchase. Please try again.');
+    } finally {
+      ref.current?.reset();
     }
   };
 
@@ -49,9 +90,9 @@ export default function BuyButton({
     <View style={styles.bottomBar}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <TouchableOpacity 
-          style={[styles.qtyButton, isSoldOut && styles.disabledButton]} 
+          style={[styles.qtyButton, (isSoldOut || isPurchasing) && styles.disabledButton]} 
           onPress={() => handleQuantityChange(false)}
-          disabled={isSoldOut}
+          disabled={isSoldOut || isPurchasing}
         >
           <Text style={styles.qtyButtonText}>−</Text>
         </TouchableOpacity>
@@ -61,9 +102,9 @@ export default function BuyButton({
         </Animated.View>
 
         <TouchableOpacity 
-          style={[styles.qtyButton, isSoldOut && styles.disabledButton]} 
+          style={[styles.qtyButton, (isSoldOut || isPurchasing) && styles.disabledButton]} 
           onPress={() => handleQuantityChange(true)}
-          disabled={isSoldOut}
+          disabled={isSoldOut || isPurchasing}
         >
           <Text style={styles.qtyButtonText}>+</Text>
         </TouchableOpacity>
@@ -79,22 +120,25 @@ export default function BuyButton({
         </View>
       ) : (
         <SwipeButton
-          ref={swipeRef}
+          ref={ref}
           key={swipeKey}
           containerStyles={styles.swipeButton}
           railStyles={styles.swipeRail}
           thumbIconStyles={styles.swipeThumb}
           titleStyles={styles.swipeTitle}
           height={50}
-          title="Swipe to Buy"
+          title={isPurchasing ? "Processing..." : `Swipe to Buy • $${totalPrice.toFixed(2)}`}
           onSwipeSuccess={handleBuySuccess}
-          resetAfterSuccess={false}
-          disabled={isSoldOut}
-          railBackgroundColor="rgba(231, 106, 84, 0.9)"
+          resetAfterSuccess={true}
+          disabled={isSoldOut || isPurchasing}
+          railBackgroundColor={isPurchasing ? "rgba(231, 106, 84, 0.5)" : "rgba(231, 106, 84, 0.9)"}
           thumbIconBackgroundColor="#fff"
           titleColor="#fff"
+          enableRightToLeftSwipe={false}
         />
       )}
     </View>
   );
-}
+});
+
+export default BuyButton;

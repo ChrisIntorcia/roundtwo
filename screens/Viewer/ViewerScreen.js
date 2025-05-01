@@ -88,6 +88,37 @@ export default function ViewerScreen({ route, navigation }) {
 
 
   useEffect(() => {
+    const checkUserSetup = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const userData = userDoc.data();
+      const hasShipping = userData?.shippingAddress;
+      const hasPayment = userData?.hasSavedPaymentMethod;
+
+      if (!hasShipping || !hasPayment) {
+        Alert.alert(
+          'Setup Required',
+          'To make purchases during live streams, you need to set up your payment and shipping information.',
+          [
+            {
+              text: 'Add Payment Info',
+              onPress: () => navigation.navigate('PaymentsShipping')
+            },
+            {
+              text: 'Continue watching',
+              style: 'cancel'
+            }
+          ]
+        );
+      }
+    };
+
+    checkUserSetup();
+  }, []);
+
+  useEffect(() => {
     const startViewing = async () => {
       try {
         const streamDoc = await getDoc(doc(db, 'livestreams', channel));
@@ -339,7 +370,7 @@ export default function ViewerScreen({ route, navigation }) {
     setChatInput('');
   };  
 
-  const { handleBuy } = usePurchase({
+  const { handleBuy, isPurchasing } = usePurchase({
     db,
     selectedProduct,
     channel,
@@ -410,6 +441,9 @@ export default function ViewerScreen({ route, navigation }) {
             swipeKey={swipeKey}
             setSwipeKey={setSwipeKey}
             swipeRef={swipeRef}
+            isPurchasing={isPurchasing}
+            db={db}
+            navigation={navigation}
           />
         </View>
 

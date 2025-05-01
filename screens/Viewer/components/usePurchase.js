@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { auth } from '../../../firebaseConfig';
-import { doc, getDoc, addDoc, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, addDoc, runTransaction, collection } from 'firebase/firestore';
 
 
 export default function usePurchase({ db, selectedProduct, channel, setShowConfetti, setPurchaseBanner }) {
@@ -9,7 +9,10 @@ export default function usePurchase({ db, selectedProduct, channel, setShowConfe
 
   const handleBuy = async (purchaseQty = 1) => {
     const user = auth.currentUser;
-    if (!user || !selectedProduct) return;
+    if (!user || !selectedProduct) {
+      Alert.alert('Error', 'Missing user or product information');
+      return;
+    }
 
     try {
       setIsPurchasing(true);
@@ -43,7 +46,8 @@ export default function usePurchase({ db, selectedProduct, channel, setShowConfe
             productId: selectedProduct.id,
             buyerEmail: user.email,
             stripeAccountId: selectedProduct.stripeAccountId,
-            application_fee_amount: Math.round(selectedProduct.bulkPrice * 100 * purchaseQty * 0.1),
+            application_fee_amount: Math.round((selectedProduct.bulkPrice + selectedProduct.shippingRate) * 100 * purchaseQty * 0.1),
+            amount: Math.round((selectedProduct.bulkPrice + selectedProduct.shippingRate) * 100 * purchaseQty),
           }),
         }
       );
@@ -64,7 +68,7 @@ export default function usePurchase({ db, selectedProduct, channel, setShowConfe
       await addDoc(collection(db, 'users', user.uid, 'purchases'), {
         productId: selectedProduct.id,
         title: selectedProduct.title,
-        price: selectedProduct.bulkPrice * purchaseQty,
+        price: (selectedProduct.bulkPrice + selectedProduct.shippingRate) * purchaseQty,
         quantity: purchaseQty,
         sellerId: selectedProduct.sellerId,
         channel,
@@ -80,7 +84,7 @@ export default function usePurchase({ db, selectedProduct, channel, setShowConfe
         sellerId: selectedProduct.sellerId,
         productId: selectedProduct.id,
         title: selectedProduct.title,
-        price: selectedProduct.bulkPrice * purchaseQty,
+        price: (selectedProduct.bulkPrice + selectedProduct.shippingRate) * purchaseQty,
         quantity: purchaseQty,
         shippingAddress: shipping,
         channel,
@@ -114,6 +118,7 @@ export default function usePurchase({ db, selectedProduct, channel, setShowConfe
     } catch (err) {
       console.error('🔥 handleBuy error:', err.message);
       Alert.alert('Purchase Failed', err.message);
+      throw err; // Re-throw to let BuyButton know it failed
     } finally {
       setIsPurchasing(false);
     }

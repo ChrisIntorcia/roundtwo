@@ -130,7 +130,7 @@ const ActivityScreen = ({ navigation }) => {
             subtitle: `$${data.price}`,
             image: data.images?.[0] || null,
             onPress: () =>
-              navigation.navigate("ProductDetail", { productId: docSnap.id }),
+              navigation.navigate("ProductDetailsScreen", { productId: docSnap.id }),
           });
         }
       }

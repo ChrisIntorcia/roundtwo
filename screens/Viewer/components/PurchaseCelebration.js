@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
-import { View, Text, Dimensions, StyleSheet } from 'react-native';
+import { View, Text, Dimensions, StyleSheet, Animated } from 'react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import { BlurView } from 'expo-blur';
 
 export default function PurchaseCelebration({ showConfetti, purchaseBanner, clearBanner }) {
   useEffect(() => {
@@ -23,8 +24,12 @@ export default function PurchaseCelebration({ showConfetti, purchaseBanner, clea
       )}
 
       {purchaseBanner && (
-        <View style={styles.banner}>
-          <Text style={styles.bannerText}>{purchaseBanner}</Text>
+        <View style={styles.bannerContainer}>
+          <BlurView intensity={30} tint="dark" style={styles.blurBackground}>
+            <View style={styles.banner}>
+              <Text style={styles.bannerText}>{purchaseBanner}</Text>
+            </View>
+          </BlurView>
         </View>
       )}
     </>
@@ -32,19 +37,33 @@ export default function PurchaseCelebration({ showConfetti, purchaseBanner, clea
 }
 
 const styles = StyleSheet.create({
-  banner: {
+  bannerContainer: {
     position: 'absolute',
-    bottom: 150,
-    left: 20,
-    right: 20,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 16,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 1000,
+  },
+  blurBackground: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  banner: {
+    backgroundColor: 'rgba(26, 26, 26, 0.8)',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    maxWidth: '80%',
   },
   bannerText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
+    textAlign: 'center',
   },
 });

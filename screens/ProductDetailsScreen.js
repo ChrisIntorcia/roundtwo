@@ -16,7 +16,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import FastImage from 'react-native-fast-image';
-import { getFirestore, collection, doc, setDoc } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, getDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 const { width } = Dimensions.get('window');
@@ -24,35 +24,116 @@ const { width } = Dimensions.get('window');
 const ProductDetailsScreen = ({ route }) => {
   const { product } = route.params;
   const navigation = useNavigation();
+  
+  if (!product) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="chevron-back" size={24} color="#222" />
+          </TouchableOpacity>
+        </View>
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <Text style={styles.errorText}>Product not found</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
 
   const handleBuy = async (isBulk) => {
+    const user = getAuth().currentUser;
+    if (!user) {
+      Alert.alert('Login Required', 'Please log in to make a purchase.');
+      return;
+    }
+
+    // Check for payment and shipping info
+    const db = getFirestore();
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    const shipping = userDoc.data()?.shippingAddress;
+    const hasCard = userDoc.data()?.hasSavedPaymentMethod;
+
+    if (!shipping || !hasCard) {
+      Alert.alert(
+        'Setup Required',
+        'You need to add payment and shipping information before making a purchase.',
+        [
+          {
+            text: 'Add Payment Info',
+            onPress: () => navigation.navigate('PaymentsShipping')
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          }
+        ]
+      );
+      return;
+    }
+
     setLoading(true);
     const quantity = isBulk ? product.bulkQuantity : 1;
     const price = isBulk ? product.bulkPrice : product.fullPrice;
+    const shippingRate = product.shippingRate || 0;
+    const totalPrice = (price + shippingRate) * quantity;
 
     try {
-      const response = await fetch('https://your-cloud-function-url/createPaymentSheet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productId: product.id,
-          amount: price * 100, // in cents
-          quantity,
-          sellerId: product.sellerId,
-          type: isBulk ? 'bulk' : 'single',
-        }),
-      });
+      const response = await fetch(
+        'https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentIntent',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productId: product.id,
+            buyerEmail: user.email,
+            stripeAccountId: product.stripeAccountId,
+            application_fee_amount: Math.round(totalPrice * 100 * 0.1), // 10% fee
+            amount: Math.round(totalPrice * 100), // Convert to cents
+          }),
+        }
+      );
 
       const data = await response.json();
-      if (!data.paymentIntent) throw new Error('No PaymentIntent received');
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Payment request failed');
+      }
 
-      Alert.alert('Success', `Ready to pay $${price} for ${quantity} item(s).`);
+      if (!data.success) {
+        throw new Error('Payment setup failed');
+      }
+
+      // Create the order in Firestore
+      const orderRef = doc(collection(db, 'orders'));
+      await setDoc(orderRef, {
+        buyerId: user.uid,
+        buyerEmail: user.email,
+        sellerId: product.sellerId,
+        productId: product.id,
+        title: product.title,
+        price: totalPrice,
+        quantity,
+        shippingAddress: shipping,
+        fulfilled: false,
+        purchasedAt: new Date(),
+      });
+
+      Alert.alert('Success', `Order placed! Total: $${totalPrice.toFixed(2)}`);
+      navigation.goBack();
+      
     } catch (error) {
       console.error('Payment error:', error);
-      Alert.alert('Error', 'There was a problem processing your payment.');
+      Alert.alert(
+        'Payment Failed',
+        error.message || 'There was a problem processing your payment. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
@@ -163,14 +244,36 @@ const ProductDetailsScreen = ({ route }) => {
 
         <View style={styles.contentCard}>
           <Text style={styles.title}>{safeTitle}</Text>
-          <Text style={styles.price}>
-            ${product.fullPrice}
-            {product.bulkPrice && (
-              <Text style={styles.bulkPrice}>
-                {' '}• Bulk: ${product.bulkPrice}/ea ({product.bulkQuantity}+)
+          
+          {/* Price and Shipping Section */}
+          <View style={styles.priceContainer}>
+            <View style={styles.mainPriceSection}>
+              <Text style={styles.price}>
+                ${product.fullPrice}
+                <Text style={styles.priceLabel}> • Single Item</Text>
               </Text>
-            )}
-          </Text>
+              {product.bulkPrice && (
+                <Text style={styles.bulkPrice}>
+                  ${product.bulkPrice}
+                  <Text style={styles.priceLabel}> • Bulk Price ({product.bulkQuantity}+ items)</Text>
+                </Text>
+              )}
+            </View>
+            
+            <View style={styles.shippingSection}>
+              <View style={styles.shippingRow}>
+                <Ionicons name="airplane-outline" size={20} color="#666" />
+                <Text style={styles.shippingText}>
+                  Shipping: ${(product.shippingRate || 0).toFixed(2)}
+                </Text>
+              </View>
+              {product.shippingRate > 0 && (
+                <Text style={styles.totalText}>
+                  Total with shipping: ${(product.fullPrice + (product.shippingRate || 0)).toFixed(2)}
+                </Text>
+              )}
+            </View>
+          </View>
 
           <TouchableOpacity
             style={styles.sellerContainer}
@@ -243,7 +346,7 @@ const ProductDetailsScreen = ({ route }) => {
             <ActivityIndicator color="#fff" size="small" />
           ) : (
             <Text style={styles.buyButtonText}>
-              Buy Now • ${product.fullPrice}
+              Buy Now • ${(product.fullPrice + (product.shippingRate || 0)).toFixed(2)}
             </Text>
           )}
         </TouchableOpacity>
@@ -360,16 +463,54 @@ const styles = StyleSheet.create({
     color: '#222',
     marginBottom: 8,
   },
-  price: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#E76A54',
-    marginBottom: 16,
+  priceContainer: {
+    marginBottom: 20,
+    backgroundColor: '#f8f8f8',
+    padding: 15,
+    borderRadius: 12,
   },
-  bulkPrice: {
-    fontSize: 16,
+  mainPriceSection: {
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingBottom: 12,
+  },
+  price: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#E76A54',
+    marginBottom: 4,
+  },
+  priceLabel: {
+    fontSize: 14,
     color: '#666',
     fontWeight: '400',
+  },
+  bulkPrice: {
+    fontSize: 18,
+    color: '#E76A54',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  shippingSection: {
+    marginTop: 8,
+  },
+  shippingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  shippingText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  totalText: {
+    fontSize: 16,
+    color: '#222',
+    fontWeight: '600',
+    marginTop: 4,
   },
   sellerContainer: {
     flexDirection: 'row',
@@ -526,6 +667,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#222',
     fontWeight: '500',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
 });
 

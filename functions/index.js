@@ -260,8 +260,10 @@ exports.createPaymentIntent = onRequest({
       // 🔥 Tax Calculation
       const TAX_RATE_PERCENT = 0.07; // 7% flat sales tax
       const basePrice = product.bulkPrice; // ✅ bulk price, since they're buying live
-      const taxAmount = basePrice * TAX_RATE_PERCENT;
-      const totalAmount = Math.round((basePrice + taxAmount) * 100); // Stripe expects cents
+      const shippingRate = product.shippingRate || 0; // Get shipping rate
+      const taxableAmount = basePrice + shippingRate; // Calculate tax on price + shipping
+      const taxAmount = taxableAmount * TAX_RATE_PERCENT;
+      const totalAmount = Math.round((basePrice + shippingRate + taxAmount) * 100); // Total in cents
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: totalAmount,
@@ -276,8 +278,9 @@ exports.createPaymentIntent = onRequest({
         },
         metadata: {
           basePrice: basePrice.toFixed(2),
+          shippingRate: shippingRate.toFixed(2),
           taxAmount: taxAmount.toFixed(2),
-          totalPrice: ((basePrice + taxAmount).toFixed(2)),
+          totalPrice: ((basePrice + shippingRate + taxAmount).toFixed(2)),
           productId: productId,
         },
       });

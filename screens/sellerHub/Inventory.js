@@ -103,7 +103,7 @@ const Inventory = () => {
     >
       <TouchableOpacity 
         style={styles.card}
-        onPress={() => navigation.navigate("ProductDetails", { product: item })}
+        onPress={() => navigation.navigate("ProductDetailsScreen", { product: item })}
         activeOpacity={0.7}
       >
         <FastImage
