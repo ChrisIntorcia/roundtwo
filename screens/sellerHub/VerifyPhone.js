@@ -11,12 +11,18 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   ActivityIndicator,
+  SafeAreaView,
+  Dimensions,
 } from "react-native";
 import { auth, db, firebaseConfig } from "../../firebaseConfig";
 import { PhoneAuthProvider, linkWithCredential } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
 import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
+
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = width - 32;
 
 export default function VerifyPhone() {
   const navigation = useNavigation();
@@ -55,6 +61,7 @@ export default function VerifyPhone() {
       );
       setVerificationId(id);
       setStep(2);
+      Alert.alert("Code Sent!", "Please check your messages for the verification code.");
     } catch (error) {
       Alert.alert("Error Sending Code", error.message);
     } finally {
@@ -101,8 +108,9 @@ export default function VerifyPhone() {
         { merge: true }
       );
 
-      Alert.alert("Success", "Your phone number has been verified.");
-      navigation.goBack();
+      Alert.alert("Success", "Your phone number has been verified!", [
+        { text: "OK", onPress: () => navigation.goBack() }
+      ]);
     } catch (error) {
       Alert.alert("Error Confirming Code", error.message);
     } finally {
@@ -110,132 +118,276 @@ export default function VerifyPhone() {
     }
   };
 
+  const renderStepIndicator = () => (
+    <View style={styles.stepIndicator}>
+      <View style={[styles.step, step === 1 && styles.activeStep]}>
+        <Text style={[styles.stepNumber, step === 1 && styles.activeStepNumber]}>1</Text>
+      </View>
+      <View style={[styles.stepConnector, step === 2 && styles.completedConnector]} />
+      <View style={[styles.step, step === 2 && styles.activeStep]}>
+        <Text style={[styles.stepNumber, step === 2 && styles.activeStepNumber]}>2</Text>
+      </View>
+    </View>
+  );
+
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.container}>
-          <FirebaseRecaptchaVerifierModal
-            ref={recaptchaVerifier}
-            firebaseConfig={firebaseConfig}
-            attemptInvisibleVerification={true}
-          />
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.content}>
+            <View style={styles.header}>
+              <TouchableOpacity 
+                style={styles.backButton}
+                onPress={() => navigation.goBack()}
+              >
+                <Ionicons name="chevron-back" size={28} color="#222" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Verify Phone</Text>
+              <View style={styles.placeholder} />
+            </View>
 
-          <Text style={styles.header}>Verify Phone</Text>
+            <FirebaseRecaptchaVerifierModal
+              ref={recaptchaVerifier}
+              firebaseConfig={firebaseConfig}
+              attemptInvisibleVerification={true}
+            />
 
-          {step === 1 && (
-            <>
-              <Text style={styles.label}>
-                US phone numbers only. No need to type +1.
+            <View style={styles.card}>
+              {renderStepIndicator()}
+
+              <Text style={styles.stepTitle}>
+                {step === 1 ? "Enter Phone Number" : "Enter Verification Code"}
               </Text>
-              <View style={styles.phoneRow}>
-                <View style={styles.prefixBox}>
-                  <Text style={styles.prefix}>+1</Text>
-                </View>
-                <TextInput
-                  style={[styles.input, { flex: 1 }]}
-                  placeholder="555-555-5555"
-                  keyboardType="phone-pad"
-                  value={phone}
-                  onChangeText={handlePhoneChange}
-                  maxLength={12}
-                />
-              </View>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={sendCode}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <Text style={styles.buttonText}>Send Verification Code</Text>
-                )}
-              </TouchableOpacity>
-            </>
-          )}
+              <Text style={styles.stepDescription}>
+                {step === 1 
+                  ? "Enter your US phone number to receive a verification code."
+                  : "Enter the 6-digit code sent to your phone."
+                }
+              </Text>
 
-          {step === 2 && (
-            <>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter verification code"
-                keyboardType="number-pad"
-                value={code}
-                onChangeText={setCode}
-                maxLength={6}
-              />
+              {step === 1 ? (
+                <View style={styles.phoneInputContainer}>
+                  <View style={styles.prefixContainer}>
+                    <Text style={styles.prefix}>+1</Text>
+                  </View>
+                  <TextInput
+                    style={styles.phoneInput}
+                    placeholder="555-555-5555"
+                    keyboardType="phone-pad"
+                    value={phone}
+                    onChangeText={handlePhoneChange}
+                    maxLength={12}
+                  />
+                </View>
+              ) : (
+                <TextInput
+                  style={styles.codeInput}
+                  placeholder="Enter 6-digit code"
+                  keyboardType="number-pad"
+                  value={code}
+                  onChangeText={setCode}
+                  maxLength={6}
+                />
+              )}
+
               <TouchableOpacity
-                style={styles.button}
-                onPress={confirmCode}
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={step === 1 ? sendCode : confirmCode}
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="white" />
+                  <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.buttonText}>Confirm Code</Text>
+                  <>
+                    <Text style={styles.buttonText}>
+                      {step === 1 ? "Send Code" : "Verify Code"}
+                    </Text>
+                    <Ionicons 
+                      name={step === 1 ? "arrow-forward" : "checkmark"} 
+                      size={20} 
+                      color="#fff" 
+                      style={styles.buttonIcon}
+                    />
+                  </>
                 )}
               </TouchableOpacity>
-            </>
-          )}
-        </View>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+
+              {step === 2 && (
+                <TouchableOpacity 
+                  style={styles.resendButton} 
+                  onPress={() => {
+                    setStep(1);
+                    setCode("");
+                  }}
+                >
+                  <Text style={styles.resendText}>Didn't receive the code?</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
-    backgroundColor: "white",
+    backgroundColor: "#fff",
+  },
+  content: {
+    flex: 1,
   },
   header: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  label: {
-    fontSize: 14,
-    color: "gray",
-    marginBottom: 8,
-  },
-  phoneRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
   },
-  prefixBox: {
-    backgroundColor: "#eee",
-    borderRadius: 10,
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#222",
+  },
+  placeholder: {
+    width: 44,
+  },
+  card: {
+    margin: 16,
+    padding: 24,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    width: CARD_WIDTH,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  stepIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  step: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#f5f5f5",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  activeStep: {
+    backgroundColor: "#E76A54",
+  },
+  stepNumber: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#666",
+  },
+  activeStepNumber: {
+    color: "#fff",
+  },
+  stepConnector: {
+    width: 40,
+    height: 2,
+    backgroundColor: "#f0f0f0",
+    marginHorizontal: 8,
+  },
+  completedConnector: {
+    backgroundColor: "#E76A54",
+  },
+  stepTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#222",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  stepDescription: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 24,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  phoneInputContainer: {
+    flexDirection: "row",
+    marginBottom: 24,
+  },
+  prefixContainer: {
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    paddingHorizontal: 16,
     paddingVertical: 14,
-    paddingHorizontal: 12,
     marginRight: 8,
+    justifyContent: "center",
   },
   prefix: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
+    color: "#222",
   },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 10,
-    padding: 14,
+  phoneInput: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
-    marginBottom: 20,
+    color: "#222",
+  },
+  codeInput: {
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: "#222",
+    marginBottom: 24,
+    textAlign: "center",
+    letterSpacing: 4,
   },
   button: {
-    backgroundColor: "black",
-    padding: 16,
+    backgroundColor: "#E76A54",
     borderRadius: 12,
+    paddingVertical: 16,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+  },
+  buttonDisabled: {
+    backgroundColor: "#ffaa99",
   },
   buttonText: {
-    color: "white",
+    color: "#fff",
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
+  },
+  buttonIcon: {
+    marginLeft: 8,
+  },
+  resendButton: {
+    marginTop: 16,
+    alignItems: "center",
+  },
+  resendText: {
+    color: "#E76A54",
+    fontSize: 14,
+    fontWeight: "500",
   },
 });

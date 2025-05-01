@@ -64,7 +64,7 @@ const SellerDetailsScreen = ({ navigation }) => {
 
   return (
 <View style={{ flex: 1 }}>
-  <CustomHeader title="Seller Setup" showBack />
+  <CustomHeader title="" showBack />
   <KeyboardAvoidingView
     style={{ flex: 1 }}
     behavior={Platform.OS === "ios" ? "padding" : undefined}

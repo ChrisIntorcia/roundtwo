@@ -273,6 +273,8 @@ PODS:
     - ExpoModulesCore
   - ExpoAsset (11.0.5):
     - ExpoModulesCore
+  - ExpoBlur (14.0.3):
+    - ExpoModulesCore
   - ExpoCamera (16.0.18):
     - ExpoModulesCore
     - ZXingObjC/OneD
@@ -290,6 +292,8 @@ PODS:
   - ExpoImagePicker (16.0.6):
     - ExpoModulesCore
   - ExpoKeepAwake (14.0.3):
+    - ExpoModulesCore
+  - ExpoLinearGradient (14.0.2):
     - ExpoModulesCore
   - ExpoLinking (7.0.5):
     - ExpoModulesCore
@@ -2417,6 +2421,7 @@ DEPENDENCIES:
   - expo-dev-menu-interface (from `../node_modules/expo-dev-menu-interface/ios`)
   - ExpoAppleAuthentication (from `../node_modules/expo-apple-authentication/ios`)
   - ExpoAsset (from `../node_modules/expo-asset/ios`)
+  - ExpoBlur (from `../node_modules/expo-blur/ios`)
   - ExpoCamera (from `../node_modules/expo-camera/ios`)
   - ExpoCrypto (from `../node_modules/expo-crypto/ios`)
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
@@ -2424,6 +2429,7 @@ DEPENDENCIES:
   - ExpoImageManipulator (from `../node_modules/expo-image-manipulator/ios`)
   - ExpoImagePicker (from `../node_modules/expo-image-picker/ios`)
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
+  - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
   - ExpoLocation (from `../node_modules/expo-location/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
@@ -2574,6 +2580,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-apple-authentication/ios"
   ExpoAsset:
     :path: "../node_modules/expo-asset/ios"
+  ExpoBlur:
+    :path: "../node_modules/expo-blur/ios"
   ExpoCamera:
     :path: "../node_modules/expo-camera/ios"
   ExpoCrypto:
@@ -2588,6 +2596,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-image-picker/ios"
   ExpoKeepAwake:
     :path: "../node_modules/expo-keep-awake/ios"
+  ExpoLinearGradient:
+    :path: "../node_modules/expo-linear-gradient/ios"
   ExpoLinking:
     :path: "../node_modules/expo-linking/ios"
   ExpoLocation:
@@ -2778,6 +2788,7 @@ SPEC CHECKSUMS:
   expo-dev-menu-interface: 00dc42302a72722fdecec3fa048de84a9133bcc4
   ExpoAppleAuthentication: 52631ed9dcb71c65712a447bbb9a5667bb8fcf0c
   ExpoAsset: 48386d40d53a8c1738929b3ed509bcad595b5516
+  ExpoBlur: 392c1207f71d0ecf22371621c1fbd44ba84d9742
   ExpoCamera: 0a3e78de7b1ca8c438ee6784fa6f22c5b1b36966
   ExpoCrypto: e97e864c8d7b9ce4a000bca45dddb93544a1b2b4
   ExpoFileSystem: 42d363d3b96f9afab980dcef60d5657a4443c655
@@ -2785,6 +2796,7 @@ SPEC CHECKSUMS:
   ExpoImageManipulator: 4aca9cc1d84e31f62a7e8075c19026d3ad62f852
   ExpoImagePicker: 24e5ba8da111f74519b1e6dc556e0b438b2b8464
   ExpoKeepAwake: b0171a73665bfcefcfcc311742a72a956e6aa680
+  ExpoLinearGradient: 35ebd83b16f80b3add053a2fd68cc328ed927f60
   ExpoLinking: 8d12bee174ba0cdf31239706578e29e74a417402
   ExpoLocation: de58a60756fad907139ec422ccabb1ba734e080d
   ExpoModulesCore: c3e810e874b33139221bea656743f106a2826f47

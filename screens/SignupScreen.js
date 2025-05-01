@@ -8,6 +8,7 @@ import {
   Keyboard,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  View,
   Platform
 } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
@@ -16,11 +17,13 @@ import { signUp, login, signInWithApple } from "../authService";
 import { getFriendlyError } from "../utils/authUtils";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebaseConfig";
+import Checkbox from "expo-checkbox"; // ✅ add this if you don't already have it installed
 
 const SignupScreen = ({ navigation }) => {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [agreed, setAgreed] = useState(false); // ✅ new checkbox state
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
@@ -47,6 +50,10 @@ const SignupScreen = ({ navigation }) => {
 
   const handleSignup = async () => {
     if (loading) return;
+    if (!agreed) {
+      setError("You must agree to the Terms of Use and Privacy Policy.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -104,6 +111,31 @@ const SignupScreen = ({ navigation }) => {
           onChangeText={setPassword}
         />
 
+        {/* ✅ Terms and Conditions Agreement */}
+        <View style={styles.checkboxContainer}>
+          <Checkbox
+            value={agreed}
+            onValueChange={setAgreed}
+            color={agreed ? "#E76A54" : undefined}
+          />
+          <Text style={styles.checkboxLabel}>
+            I agree to the{" "}
+            <Text
+              style={styles.linkText}
+              onPress={() => navigation.navigate("TermsOfUse")} // assume you have TermsOfUse screen or link it to a WebView/modal
+            >
+              Terms of Use
+            </Text>{" "}
+            and{" "}
+            <Text
+              style={styles.linkText}
+              onPress={() => navigation.navigate("PrivacyPolicy")} // same for Privacy Policy
+            >
+              Privacy Policy
+            </Text>.
+          </Text>
+        </View>
+
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <TouchableOpacity onPress={handleSignup} style={styles.signupButton} disabled={loading}>
@@ -128,7 +160,10 @@ const styles = StyleSheet.create({
   orText: { textAlign: "center", marginVertical: 20, color: "#999" },
   appleButton: { width: "100%", height: 44, marginTop: 12 },
   signupButton: { backgroundColor: "#E76A54", padding: 14, borderRadius: 32, alignItems: "center", marginTop: 16 },
-  signupText: { color: "#fff", fontWeight: "bold" }
+  signupText: { color: "#fff", fontWeight: "bold" },
+  checkboxContainer: { flexDirection: "row", alignItems: "center", marginVertical: 12 },
+  checkboxLabel: { flex: 1, marginLeft: 8, color: "#555" },
+  linkText: { color: "#007f6b", textDecorationLine: "underline" }, // brand color for links
 });
 
 export default SignupScreen;

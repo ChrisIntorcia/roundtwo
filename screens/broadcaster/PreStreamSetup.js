@@ -1,4 +1,4 @@
-import CustomHeader from "../components/CustomHeader";
+import CustomHeader from "../../components/CustomHeader";
 import React, { useState } from 'react';
 import {
   View,
@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Keyboard,
   TouchableWithoutFeedback,
+  Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -32,9 +33,14 @@ import {
   VideoSourceType,
 } from 'react-native-agora';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const APP_ID = '262ef45d2c514a5ebb129a836c4bff93';
 const TOKEN_SERVER_URL = 'https://us-central1-roundtwo-cc793.cloudfunctions.net/generateAgoraToken';
+
+const { width } = Dimensions.get('window');
+const CARD_PADDING = 20;
+const THUMBNAIL_SIZE = width - (CARD_PADDING * 4);
 
 export default function PreStreamSetup() {
   const [thumbnailLocalUri, setThumbnailLocalUri] = useState(null);
@@ -51,6 +57,7 @@ export default function PreStreamSetup() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
+      aspect: [16, 9],
       quality: 1,
     });
     if (!result.canceled && result.assets?.[0]?.uri) {
@@ -193,40 +200,63 @@ export default function PreStreamSetup() {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Stream Title</Text>
             <TextInput
-  placeholder="Enter stream title"
-  value={streamTitle}
-  onChangeText={(text) => {
-    const capitalized = text
-      .toLowerCase()
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-    setStreamTitle(capitalized);
-  }}  
-  style={styles.input}
-/>
-            <Text style={styles.sectionTitle}>Thumbnail</Text>
-            <TouchableOpacity style={styles.actionButton} onPress={pickThumbnail} disabled={isLoading}>
-              <Text style={styles.thumbnailText}>Select Thumbnail</Text>
+              placeholder="Enter an engaging title for your stream"
+              value={streamTitle}
+              onChangeText={(text) => {
+                const capitalized = text
+                  .toLowerCase()
+                  .split(' ')
+                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(' ');
+                setStreamTitle(capitalized);
+              }}
+              style={styles.input}
+              placeholderTextColor="#999"
+              maxLength={50}
+            />
+            
+            <Text style={styles.sectionTitle}>Stream Thumbnail</Text>
+            <TouchableOpacity 
+              style={[
+                styles.thumbnailContainer,
+                !thumbnailLocalUri && styles.thumbnailPlaceholder
+              ]} 
+              onPress={pickThumbnail}
+              disabled={isLoading}
+            >
+              {thumbnailLocalUri ? (
+                <Image
+                  source={{ uri: thumbnailLocalUri }}
+                  style={styles.thumbnail}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.uploadPrompt}>
+                  <MaterialIcons name="add-photo-alternate" size={40} color="#666" />
+                  <Text style={styles.uploadText}>Upload Thumbnail</Text>
+                  <Text style={styles.uploadSubtext}>Tap to choose an image</Text>
+                </View>
+              )}
             </TouchableOpacity>
 
-            {thumbnailLocalUri && (
-              <View style={styles.thumbnailWrapper}>
-                <Image source={{ uri: thumbnailLocalUri }} style={styles.thumbnailPreview} />
-                <TouchableOpacity
-                  style={styles.deleteButton}
-                  onPress={() => setThumbnailLocalUri(null)}
-                >
-                  <Text style={styles.deleteButtonText}>×</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <TouchableOpacity style={styles.goLiveButton} onPress={startLiveStream} disabled={isLoading}>
+            <TouchableOpacity
+              style={[
+                styles.startButton,
+                (isLoading || !thumbnailLocalUri) && styles.startButtonDisabled
+              ]}
+              onPress={startLiveStream}
+              disabled={isLoading || !thumbnailLocalUri}
+            >
               {isLoading ? (
-                <ActivityIndicator color="#fff" />
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator color="#fff" />
+                  <Text style={styles.loadingText}>Preparing Stream...</Text>
+                </View>
               ) : (
-                <Text style={styles.buttonText}>Start Live Stream</Text>
+                <>
+                  <MaterialIcons name="live-tv" size={24} color="#fff" />
+                  <Text style={styles.startButtonText}>Go Live</Text>
+                </>
               )}
             </TouchableOpacity>
           </View>
@@ -237,90 +267,103 @@ export default function PreStreamSetup() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flexGrow: 1, backgroundColor: '#f5f5f5' },
+  safeArea: {
+    flexGrow: 1,
+    backgroundColor: '#f8f9fa',
+  },
   container: {
     flex: 1,
-    padding: 16,
-    justifyContent: 'center',
+    padding: CARD_PADDING,
   },
   card: {
     backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 14,
+    borderRadius: 15,
+    padding: CARD_PADDING,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#222',
-    marginBottom: 12,
+    color: '#2c3e50',
+    marginBottom: 10,
+    marginTop: 10,
   },
-  actionButton: {
-    backgroundColor: '#EAEAEA',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 32,
-    alignItems: 'center',
+  input: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    padding: 15,
+    fontSize: 16,
+    color: '#2c3e50',
     marginBottom: 20,
-  },  
-  goLiveButton: {
-    backgroundColor: '#E76A54',
-    paddingVertical: 14,
-    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  thumbnailContainer: {
+    width: THUMBNAIL_SIZE,
+    height: THUMBNAIL_SIZE * 9/16,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginBottom: 20,
+    backgroundColor: '#f8f9fa',
+  },
+  thumbnailPlaceholder: {
+    borderWidth: 2,
+    borderColor: '#e9ecef',
+    borderStyle: 'dashed',
+  },
+  thumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  uploadPrompt: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 10,
+  },
+  uploadSubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 5,
+  },
+  startButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 10,
+    padding: 15,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
   },
-  buttonText: {
+  startButtonDisabled: {
+    backgroundColor: '#a5d6a7',
+  },
+  startButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 10,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  loadingText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '500',
+    marginLeft: 10,
   },
-  thumbnailWrapper: {
-    position: 'relative',
-    marginBottom: 20,
-  },
-  thumbnailPreview: {
-    width: '100%',
-    height: 200,
-    resizeMode: 'cover',
-    borderRadius: 12,
-  },
-  deleteButton: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#ff4444',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  deleteButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-    lineHeight: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 20,
-  },
-  thumbnailText: {
-    color: '#E76A54',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  
 });

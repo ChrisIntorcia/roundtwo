@@ -10,15 +10,17 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { getFirestore, collection, addDoc, Timestamp, doc, getDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, Timestamp, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getApp } from 'firebase/app';
 import { auth } from '../firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { Ionicons } from '@expo/vector-icons';
 import CustomHeader from "../components/CustomHeader";
 
 const app = getApp();
@@ -37,12 +39,13 @@ const CreateProduct = () => {
   const [description, setDescription] = useState('');
   const [fullPrice, setFullPrice] = useState('');
   const [bulkPrice, setBulkPrice] = useState('');
+  const [shippingRate, setShippingRate] = useState('');
   const [photos, setPhotos] = useState([]);
   const scrollViewRef = useRef(null);
   const fullPriceRef = useRef(null);
   const bulkPriceRef = useRef(null);
   const [quantity, setQuantity] = useState('');
-   const [publishing, setPublishing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleAddMedia = async () => {
     const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -59,36 +62,17 @@ const CreateProduct = () => {
     }
   };
 
-  const handlePublish = async () => {
-    if (publishing) return; // Prevent double-tap
-    setPublishing(true);
-  
-    if (!title || !description || !fullPrice || !bulkPrice || photos.length === 0) {
-      setPublishing(false);
-      return Alert.alert('Incomplete Fields', 'Please complete all required fields and add at least one photo.');
+  const handleSubmit = async () => {
+    if (!title || !fullPrice || !bulkPrice || !shippingRate || !description || photos.length === 0) {
+      Alert.alert("Error", "Please fill in all fields and add at least one image");
+      return;
     }
-  
-    const parsedFullPrice = parseFloat(fullPrice);
-    const parsedBulkPrice = parseFloat(bulkPrice);
-  
-    if (isNaN(parsedFullPrice) || isNaN(parsedBulkPrice)) {
-      setPublishing(false);
-      return Alert.alert('Invalid Input', 'Please enter valid numbers for pricing and bulk quantity.');
-    }
-  
-    const parsedQuantity = parseInt(quantity);
-    if (isNaN(parsedQuantity)) {
-      setPublishing(false);
-      return Alert.alert('Invalid Input', 'Quantity must be a valid number.');
-    }
-  
+
+    setIsLoading(true);
     try {
-      const user = auth.currentUser;
-      if (!user) {
-        setPublishing(false);
-        return Alert.alert('User not authenticated');
-      }
-  
+      console.log('Starting product creation...');
+      
+      // Upload images first
       const imageUrls = await Promise.all(
         photos.map(async (photo, index) => {
           const manipulated = await ImageManipulator.manipulateAsync(
@@ -98,46 +82,50 @@ const CreateProduct = () => {
           );
           const response = await fetch(manipulated.uri);
           const blob = await response.blob();
-          const storageRef = ref(storage, `products/${user.uid}/${Date.now()}_${index}`);
+          const storageRef = ref(storage, `products/${auth.currentUser.uid}/${Date.now()}_${index}`);
           await uploadBytes(storageRef, blob);
           return getDownloadURL(storageRef);
         })
       );
-  
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      console.log('Images uploaded successfully:', imageUrls);
+
+      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
       const userData = userDoc.data();
       const stripeAccountId = userData?.stripeAccountId || null;
-  
+
       const productData = {
-        sellerId: user.uid,
+        sellerId: auth.currentUser.uid,
         title,
         description: capitalizeSentences(description),
-        fullPrice: parsedFullPrice,
-        bulkPrice: parsedBulkPrice,
+        fullPrice: parseFloat(fullPrice),
+        bulkPrice: parseFloat(bulkPrice),
+        shippingRate: parseFloat(shippingRate) || 0,
         currency: 'usd',
         images: imageUrls,
-        createdAt: Timestamp.now(),
+        createdAt: serverTimestamp(),
         stripeAccountId,
-        quantity: parsedQuantity,
+        quantity: parseInt(quantity),
         taxCode: "txcd_31010000",
       };
-  
+      console.log('Product data prepared:', productData);
+
+      // Save to Firestore
       const productRef = doc(collection(db, 'products'));
       await setDoc(productRef, productData);
-  
-      Alert.alert('Published', 'Your product has been published successfully!', [
-        { text: 'OK', onPress: () => navigation.replace('MainApp', { screen: 'Home' }) },
-      ]);
+      console.log('Product saved successfully with ID:', productRef.id);
+
+      Alert.alert("Success", "Product created successfully!");
+      navigation.goBack();
     } catch (error) {
-      console.error("Error publishing product:", error);
-      Alert.alert('Error', 'There was an issue publishing your product.');
+      console.error('Error creating product:', error);
+      Alert.alert("Error", error.message);
     } finally {
-      setPublishing(false); // Reset at the end no matter what
+      setIsLoading(false);
     }
-  };  
+  };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.container}>
       <CustomHeader title="Create Product" showBack />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAwareScrollView
@@ -148,15 +136,37 @@ const CreateProduct = () => {
           keyboardOpeningTime={250}
           enableAutomaticScroll={true}
           enableOnAndroid={true}
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.mediaSection}>
-            <Text style={styles.sectionTitle}>Photos</Text>
-            <Text style={styles.mediaNote}>Add up to 8 photos to showcase your product.</Text>
-            <Text style={styles.mediaCounter}>Photos: {photos.length}/8</Text>
-            <TouchableOpacity style={styles.addMediaButton} onPress={handleAddMedia}>
-              <Text style={styles.addMediaText}>+ Add Photo</Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="images-outline" size={24} color="#333" />
+              <Text style={styles.sectionTitle}>Product Photos</Text>
+            </View>
+            <Text style={styles.mediaNote}>Add up to 8 photos to showcase your product</Text>
+            <View style={styles.photoCountContainer}>
+              <View style={styles.photoCountBadge}>
+                <Text style={styles.photoCount}>{photos.length}/8</Text>
+              </View>
+            </View>
+            
+            <TouchableOpacity 
+              style={[
+                styles.addMediaButton,
+                photos.length >= 8 && styles.addMediaButtonDisabled
+              ]} 
+              onPress={handleAddMedia}
+              disabled={photos.length >= 8}
+            >
+              <Ionicons name="add-circle-outline" size={24} color="#fff" />
+              <Text style={styles.addMediaText}>Add Photo</Text>
             </TouchableOpacity>
-            <ScrollView horizontal style={{ marginTop: 20, paddingTop: 10 }}>
+
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.photoScroll}
+            >
               {photos.map((photo, index) => (
                 <View key={index} style={styles.imageWrapper}>
                   <Image source={{ uri: photo }} style={styles.imagePreview} />
@@ -164,7 +174,7 @@ const CreateProduct = () => {
                     onPress={() => setPhotos((prevPhotos) => prevPhotos.filter((_, i) => i !== index))}
                     style={styles.deleteButton}
                   >
-                    <Text style={styles.deleteButtonText}>×</Text>
+                    <Ionicons name="close" size={16} color="#fff" />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -172,13 +182,17 @@ const CreateProduct = () => {
           </View>
 
           <View style={styles.detailsSection}>
-            <Text style={styles.sectionTitle}>Product Details</Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="information-circle-outline" size={24} color="#333" />
+              <Text style={styles.sectionTitle}>Product Details</Text>
+            </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Title *</Text>
+              <Text style={styles.inputLabel}>Title <Text style={styles.required}>*</Text></Text>
               <TextInput
-                style={styles.input}
-                placeholder="Enter title"
+                style={[styles.input, title.length > 0 && styles.inputFilled]}
+                placeholder="Enter product title"
+                placeholderTextColor="#999"
                 value={title}
                 autoFocus={true}
                 onChangeText={(text) => setTitle(text.replace(/\b\w/g, (c) => c.toUpperCase()))}
@@ -186,10 +200,11 @@ const CreateProduct = () => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Description *</Text>
+              <Text style={styles.inputLabel}>Description <Text style={styles.required}>*</Text></Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Enter description"
+                style={[styles.input, styles.textArea, description.length > 0 && styles.inputFilled]}
+                placeholder="Describe your product in detail"
+                placeholderTextColor="#999"
                 value={description}
                 onChangeText={setDescription}
                 multiline
@@ -200,21 +215,26 @@ const CreateProduct = () => {
 
             <View style={[styles.inputGroup, styles.inputRow]}>
               <View style={styles.inputGroupHalf}>
-                <Text style={styles.inputLabel}>Full Price *</Text>
-                <TextInput
-                  ref={fullPriceRef}
-                  style={styles.input}
-                  placeholder="0.00"
-                  value={fullPrice}
-                  onChangeText={setFullPrice}
-                  keyboardType="numeric"
-                />
+                <Text style={styles.inputLabel}>Full Price <Text style={styles.required}>*</Text></Text>
+                <View style={styles.priceInputContainer}>
+                  <Text style={styles.currencySymbol}>$</Text>
+                  <TextInput
+                    ref={fullPriceRef}
+                    style={[styles.input, styles.priceInput, fullPrice.length > 0 && styles.inputFilled]}
+                    placeholder="0.00"
+                    placeholderTextColor="#999"
+                    value={fullPrice}
+                    onChangeText={setFullPrice}
+                    keyboardType="numeric"
+                  />
+                </View>
               </View>
               <View style={styles.inputGroupHalf}>
-                <Text style={styles.inputLabel}>Quantity *</Text>
+                <Text style={styles.inputLabel}>Quantity <Text style={styles.required}>*</Text></Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, quantity.length > 0 && styles.inputFilled]}
                   placeholder="0"
+                  placeholderTextColor="#999"
                   value={quantity}
                   onChangeText={setQuantity}
                   keyboardType="numeric"
@@ -224,26 +244,37 @@ const CreateProduct = () => {
 
             <View style={[styles.inputGroup, styles.inputRow]}>
               <View style={styles.inputGroupHalf}>
-                <Text style={styles.inputLabel}>Live Stream Price *</Text>
-                <TextInput
-                  ref={bulkPriceRef}
-                  style={styles.input}
-                  placeholder="0.00"
-                  value={bulkPrice}
-                  onChangeText={setBulkPrice}
-                  keyboardType="numeric"
-                />
+                <Text style={styles.inputLabel}>Bulk Price <Text style={styles.required}>*</Text></Text>
+                <View style={styles.priceInputContainer}>
+                  <Text style={styles.currencySymbol}>$</Text>
+                  <TextInput
+                    ref={bulkPriceRef}
+                    style={[styles.input, styles.priceInput, bulkPrice.length > 0 && styles.inputFilled]}
+                    placeholder="0.00"
+                    placeholderTextColor="#999"
+                    value={bulkPrice}
+                    onChangeText={setBulkPrice}
+                    keyboardType="numeric"
+                  />
+                </View>
+                {fullPrice && bulkPrice && (
+                  <Text style={styles.discountNote}>
+                    {Math.round(((parseFloat(fullPrice) - parseFloat(bulkPrice)) / parseFloat(fullPrice)) * 100)}% discount from full price
+                  </Text>
+                )}
               </View>
               <View style={styles.inputGroupHalf}>
-                <Text style={styles.inputLabel}>% Discount</Text>
-                <View style={[styles.input, { justifyContent: 'center', height: 40 }]}>
-                  <Text>
-                    {fullPrice && bulkPrice
-                      ? `${Math.round(
-                          ((parseFloat(fullPrice) - parseFloat(bulkPrice)) / parseFloat(fullPrice)) * 100
-                        )}%`
-                      : "—"}
-                  </Text>
+                <Text style={styles.inputLabel}>Shipping Rate <Text style={styles.required}>*</Text></Text>
+                <View style={styles.priceInputContainer}>
+                  <Text style={styles.currencySymbol}>$</Text>
+                  <TextInput
+                    style={[styles.input, styles.priceInput, shippingRate.length > 0 && styles.inputFilled]}
+                    placeholder="0.00"
+                    placeholderTextColor="#999"
+                    value={shippingRate}
+                    onChangeText={setShippingRate}
+                    keyboardType="numeric"
+                  />
                 </View>
               </View>
             </View>
@@ -254,18 +285,27 @@ const CreateProduct = () => {
               style={styles.secondaryButton}
               onPress={() => Alert.alert('Draft Saved', 'Your draft has been saved!')}
             >
-              <Text style={styles.buttonText}>Save Draft</Text>
+              <Text style={styles.secondaryButtonText}>Save Draft</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.primaryButton, !(title && description && fullPrice && bulkPrice) && styles.disabledButton]}
-              disabled={publishing || !(title && description && fullPrice && bulkPrice)}
-              onPress={handlePublish}
+              style={[
+                styles.primaryButton,
+                !(title && description && fullPrice && bulkPrice) && styles.disabledButton
+              ]}
+              disabled={isLoading || !(title && description && fullPrice && bulkPrice)}
+              onPress={handleSubmit}
             >
-              <Text style={styles.buttonText}>Publish</Text>
+              {isLoading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Publish</Text>
+              )}
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.notes}>Complete all required fields to create a quality listing.</Text>
+          <Text style={styles.notes}>
+            <Ionicons name="information-circle" size={14} color="#777" /> Complete all required fields marked with * to create a quality listing
+          </Text>
         </KeyboardAwareScrollView>
       </TouchableWithoutFeedback>
     </View>
@@ -273,31 +313,227 @@ const CreateProduct = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  scrollContainer: { padding: 16, paddingBottom: 100 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 8, color: '#222' },
-  mediaSection: { marginBottom: 24 },
-  mediaNote: { fontSize: 13, color: '#777' },
-  mediaCounter: { marginTop: 4, fontSize: 13, color: '#555' },
-  addMediaButton: { marginTop: 10, backgroundColor: "#E76A54", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 32, alignSelf: 'flex-start' },
-  addMediaText: { color: '#fff', fontWeight: '600' },
-  imageWrapper: { position: 'relative', marginRight: 10 },
-  imagePreview: { width: 100, height: 100, borderRadius: 10 },
-  deleteButton: { position: 'absolute', top: -6, right: -6, backgroundColor: '#ff4444', width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
-  deleteButtonText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
-  detailsSection: { backgroundColor: '#f7f7f7', padding: 16, borderRadius: 12, marginBottom: 24, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  inputGroup: { marginBottom: 16 },
-  inputRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  inputGroupHalf: { flex: 1 },
-  inputLabel: { fontSize: 14, fontWeight: '500', marginBottom: 4, color: '#333' },
-  input: { height: 40, backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 12, borderColor: '#ccc', borderWidth: 1 },
-  textArea: { height: 80, textAlignVertical: 'top' },
-  buttonRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  primaryButton: { flex: 1, backgroundColor: "#E76A54", paddingVertical: 12, borderRadius: 32, alignItems: 'center', marginLeft: 10 },
-  secondaryButton: { flex: 1, backgroundColor: '#6c757d', paddingVertical: 12, borderRadius: 32, alignItems: 'center', marginRight: 10 },
-  disabledButton: { backgroundColor: '#ccc' },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  notes: { marginTop: 24, fontSize: 13, color: '#777', textAlign: 'center' },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  scrollContainer: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 8,
+  },
+  mediaSection: {
+    marginBottom: 24,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  mediaNote: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  photoCountContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 12,
+  },
+  photoCountBadge: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  photoCount: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  addMediaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: "#E76A54",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  addMediaButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  addMediaText: {
+    color: '#fff',
+    fontWeight: '600',
+    marginLeft: 8,
+    fontSize: 16,
+  },
+  photoScroll: {
+    marginTop: 8,
+  },
+  imageWrapper: {
+    marginRight: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  imagePreview: {
+    width: 120,
+    height: 120,
+    borderRadius: 12,
+  },
+  deleteButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(255, 59, 48, 0.9)',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailsSection: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  inputGroupHalf: {
+    flex: 1,
+  },
+  inputLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    marginBottom: 8,
+    color: '#333',
+  },
+  required: {
+    color: '#E76A54',
+  },
+  input: {
+    backgroundColor: '#f8f8f8',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  inputFilled: {
+    backgroundColor: '#fff',
+    borderColor: '#E76A54',
+  },
+  textArea: {
+    height: 120,
+    textAlignVertical: 'top',
+    paddingTop: 12,
+  },
+  priceInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f8f8',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  currencySymbol: {
+    paddingLeft: 16,
+    fontSize: 16,
+    color: '#666',
+  },
+  priceInput: {
+    flex: 1,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+  },
+  discountNote: {
+    fontSize: 13,
+    color: '#E76A54',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 8,
+  },
+  primaryButton: {
+    flex: 1,
+    backgroundColor: "#E76A54",
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#E76A54',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  secondaryButton: {
+    flex: 1,
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+    shadowOpacity: 0,
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  secondaryButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  notes: {
+    marginTop: 24,
+    fontSize: 14,
+    color: '#777',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
 });
 
 export default CreateProduct;

@@ -10,8 +10,10 @@ import {
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
+  ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { auth } from '../../firebaseConfig';
 import {
   getFirestore,
@@ -23,9 +25,13 @@ import {
   query,
   orderBy,
   serverTimestamp,
+  limit,
 } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
+import CustomHeader from '../../components/CustomHeader';
 
 const db = getFirestore();
+const MESSAGES_LIMIT = 50;
 
 export default function MessagesScreen() {
   const route = useRoute();
@@ -35,55 +41,105 @@ export default function MessagesScreen() {
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
   const flatListRef = useRef();
+  const inputRef = useRef();
+  const navigation = useNavigation();
 
   useEffect(() => {
     const messagesRef = collection(db, 'chats', chatId, 'messages');
-    const q = query(messagesRef, orderBy('timestamp', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setMessages(msgs);
+    const q = query(
+      messagesRef,
+      orderBy('timestamp', 'desc'),
+      limit(MESSAGES_LIMIT)
+    );
 
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const msgs = snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .reverse();
+      setMessages(msgs);
+      setIsLoading(false);
+
+      // Only auto-scroll if user is at bottom
+      if (flatListRef.current) {
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
     });
+
     return unsubscribe;
   }, [chatId]);
 
   const handleSend = async () => {
-    if (input.trim() === '') return;
+    if (input.trim() === '' || isSending) return;
 
-    const message = {
-      text: input,
-      senderId: currentUserId,
-      timestamp: serverTimestamp(),
-    };
+    try {
+      setIsSending(true);
+      const message = {
+        text: input.trim(),
+        senderId: currentUserId,
+        timestamp: serverTimestamp(),
+      };
 
-    await setDoc(doc(db, 'chats', chatId), {
-      users: [currentUserId, otherUserId],
-      lastMessage: input,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
+      await setDoc(
+        doc(db, 'chats', chatId),
+        {
+          users: [currentUserId, otherUserId],
+          lastMessage: input.trim(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
 
-    await addDoc(collection(db, 'chats', chatId, 'messages'), message);
-    setInput('');
+      await addDoc(collection(db, 'chats', chatId, 'messages'), message);
+      setInput('');
+      inputRef.current?.blur();
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const isSameDay = (a, b) => {
+    if (!a || !b) return false;
+    const dateA = a instanceof Date ? a : a.toDate();
+    const dateB = b instanceof Date ? b : b.toDate();
     return (
-      a?.getFullYear?.() === b?.getFullYear?.() &&
-      a?.getMonth?.() === b?.getMonth?.() &&
-      a?.getDate?.() === b?.getDate?.()
+      dateA.getFullYear() === dateB.getFullYear() &&
+      dateA.getMonth() === dateB.getMonth() &&
+      dateA.getDate() === dateB.getDate()
     );
   };
 
   const formatDate = (timestamp) => {
     if (!timestamp?.toDate) return '';
-    return timestamp.toDate().toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    const date = timestamp.toDate();
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (isSameDay(date, today)) {
+      return 'Today';
+    } else if (isSameDay(date, yesterday)) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+  };
+
+  const formatTime = (timestamp) => {
+    if (!timestamp?.toDate) return '';
+    return timestamp.toDate().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
@@ -109,106 +165,213 @@ export default function MessagesScreen() {
           <Text style={[styles.messageText, isMine && styles.whiteText]}>
             {item.text}
           </Text>
+          <Text style={[styles.timeText, isMine && styles.whiteTimeText]}>
+            {formatTime(item.timestamp)}
+          </Text>
         </View>
       </View>
     );
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#E76A54" />
+      </View>
+    );
+  }
+
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.inner}>
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.messagesContainer}
-            style={styles.flatList}
-          />
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={input}
-              onChangeText={setInput}
-              placeholder={`Message ${otherUsername}`}
-              placeholderTextColor="#aaa"
-            />
-            <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
-              <Text style={styles.sendText}>Send</Text>
-            </TouchableOpacity>
+    <SafeAreaView style={styles.container}>
+      <CustomHeader 
+        title={otherUsername}
+        showBack={true}
+        onBack={() => navigation.goBack()}
+      />
+      
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.inner}>
+            {messages.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="chatbubble-outline" size={50} color="#ccc" />
+                <Text style={styles.emptyText}>No messages yet</Text>
+                <Text style={styles.emptySubtext}>Start the conversation!</Text>
+              </View>
+            ) : (
+              <FlatList
+                ref={flatListRef}
+                data={messages}
+                renderItem={renderItem}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.messagesContainer}
+                style={styles.flatList}
+                inverted={false}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
+
+            <View style={styles.inputContainer}>
+              <TextInput
+                ref={inputRef}
+                style={styles.input}
+                value={input}
+                onChangeText={setInput}
+                placeholder={`Message ${otherUsername}`}
+                placeholderTextColor="#999"
+                multiline
+                maxLength={1000}
+              />
+              <TouchableOpacity
+                style={[styles.sendButton, !input.trim() && styles.sendButtonDisabled]}
+                onPress={handleSend}
+                disabled={!input.trim() || isSending}
+              >
+                {isSending ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="send" size={20} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  inner: { flex: 1 },
-  flatList: { flex: 1 },
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  backButton: {
+    padding: 4,
+  },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  inner: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 100,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#666',
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
+  },
+  flatList: {
+    flex: 1,
+  },
   messagesContainer: {
-    paddingTop: 10,
-    paddingHorizontal: 10,
+    padding: 16,
     paddingBottom: 20,
   },
   dateWrapper: {
     alignItems: 'center',
-    marginVertical: 10,
+    marginVertical: 16,
   },
   dateText: {
-    fontSize: 13,
-    color: '#888',
+    fontSize: 12,
+    color: '#999',
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   messageBubble: {
-    maxWidth: '70%',
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 10,
+    maxWidth: '75%',
+    padding: 12,
+    borderRadius: 20,
+    marginBottom: 4,
   },
   myMessage: {
     alignSelf: 'flex-end',
     backgroundColor: '#E76A54',
+    borderBottomRightRadius: 4,
   },
   theirMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: '#eee',
+    backgroundColor: '#f0f2f5',
+    borderBottomLeftRadius: 4,
   },
   messageText: {
     fontSize: 16,
+    color: '#2d3436',
+    marginRight: 40,
   },
   whiteText: {
     color: '#fff',
   },
+  timeText: {
+    fontSize: 11,
+    color: '#95a5a6',
+    position: 'absolute',
+    right: 12,
+    bottom: 8,
+  },
+  whiteTimeText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
   inputContainer: {
     flexDirection: 'row',
-    padding: 10,
-    paddingBottom: 20,
+    alignItems: 'flex-end',
+    padding: 8,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
     borderTopWidth: 1,
-    borderTopColor: '#ccc',
+    borderTopColor: '#eee',
     backgroundColor: '#fff',
   },
   input: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#ccc',
+    minHeight: 40,
+    maxHeight: 100,
+    backgroundColor: '#f0f2f5',
     borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    color: '#000',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 10,
+    marginRight: 8,
+    fontSize: 16,
   },
   sendButton: {
-    marginLeft: 10,
-    backgroundColor: '#E76A54',
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    backgroundColor: '#E76A54',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  sendText: { color: '#fff', fontWeight: 'bold' },
+  sendButtonDisabled: {
+    opacity: 0.5,
+  },
 });

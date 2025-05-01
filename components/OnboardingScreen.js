@@ -9,6 +9,8 @@ import {
 import Carousel from "react-native-reanimated-carousel";
 import { useNavigation } from "@react-navigation/native";
 import FastImage from "react-native-fast-image";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 
 const { width, height } = Dimensions.get("window");
 
@@ -75,11 +77,14 @@ export default function OnboardingScreen() {
 
             <TouchableOpacity
               style={styles.button}
-              onPress={() =>
-                index === slides.length - 1
-                  ? navigation.replace("Signup")
-                  : carouselRef.current?.next()
-              }
+              onPress={async () => {
+                if (index === slides.length - 1) {
+                  await AsyncStorage.setItem('hasSeenOnboarding', 'true');
+                  navigation.replace("Signup");
+                } else {
+                  carouselRef.current?.next();
+                }
+              }}
             >
               <Text style={styles.buttonText}>
                 {index === slides.length - 1 ? "Get Started" : "Next"}

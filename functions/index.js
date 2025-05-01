@@ -162,8 +162,8 @@ exports.createStripeAccountLink = onRequest({
 
       const accountLink = await stripe.accountLinks.create({
         account: stripeAccountId,
-        refresh_url: "https://stogora.shop/refresh",
-        return_url: "https://stogora.shop/return",
+        refresh_url: "roundtwo://payout-refresh",
+        return_url: "roundtwo://onboarding-success",
         type: "account_onboarding",
       });
 

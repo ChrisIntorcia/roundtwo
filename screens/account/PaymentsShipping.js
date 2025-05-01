@@ -9,7 +9,8 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
-  ActivityIndicator
+  ActivityIndicator,
+  Animated,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Ionicons } from "@expo/vector-icons";
@@ -28,6 +29,7 @@ export default function PaymentsShippingScreen() {
   const [paymentSummary, setPaymentSummary] = useState(null);
   const [shippingSummary, setShippingSummary] = useState(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [scaleAnim] = useState(new Animated.Value(1));
 
   useEffect(() => {
     if (!user) return;
@@ -55,9 +57,25 @@ export default function PaymentsShippingScreen() {
     });
   }, [user]);
 
+  const animatePress = () => {
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
   const openPaymentSheet = async () => {
     if (!user || isProcessingPayment) return;
-  
+    
+    animatePress();
     setIsProcessingPayment(true);
   
     try {
@@ -92,30 +110,63 @@ export default function PaymentsShippingScreen() {
   
       if (sheetError) {
         if (sheetError.code === "Canceled") {
-          return; // silent cancel
+          return;
         }
         throw new Error(sheetError.message);
       }
   
-      // ✅ Save after successful setup
       const userRef = doc(db, "users", user.uid);
       await setDoc(userRef, { hasSavedPaymentMethod: true }, { merge: true });
   
       setPaymentSummary("**** CARD SAVED");
-      Alert.alert("✅ Success", "Payment method added!");
+      Alert.alert("Success", "Payment method added successfully!", [{ text: "OK" }]);
     } catch (err) {
-      console.error("💥 Payment Setup Error:", err.message);
-      Alert.alert("Error", err.message || "Something went wrong during payment setup.");
+      console.error("Payment Setup Error:", err.message);
+      Alert.alert(
+        "Error",
+        err.message || "Something went wrong during payment setup.",
+        [{ text: "Try Again" }]
+      );
     } finally {
       setIsProcessingPayment(false);
     }
   };
-  
-
 
   const openShippingSheet = () => {
+    animatePress();
     navigation.navigate("AddShippingAddress");
   };
+
+  const renderSection = (icon, title, subtitle, onPress, isLoading = false) => (
+    <Animated.View style={[styles.sectionContainer, { transform: [{ scale: scaleAnim }] }]}>
+      <TouchableOpacity
+        style={[styles.section, isLoading && { opacity: 0.7 }]}
+        onPress={onPress}
+        disabled={isLoading}
+        activeOpacity={0.8}
+      >
+        <View style={styles.sectionIcon}>
+          <Ionicons name={icon} size={24} color="#444" />
+        </View>
+        <View style={styles.sectionContent}>
+          <Text style={styles.sectionTitle}>{title}</Text>
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#444" style={{ marginTop: 4 }} />
+          ) : (
+            <Text style={[
+              styles.sectionSubtitle,
+              !subtitle && styles.sectionSubtitleEmpty
+            ]}>
+              {subtitle || "Not set"}
+            </Text>
+          )}
+        </View>
+        <View style={styles.editIconContainer}>
+          <Ionicons name="chevron-forward" size={20} color="#999" />
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
 
   return (
     <KeyboardAvoidingView
@@ -128,63 +179,34 @@ export default function PaymentsShippingScreen() {
           keyboardShouldPersistTaps="handled"
           enableOnAndroid
           extraScrollHeight={20}
+          showsVerticalScrollIndicator={false}
         >
-          <CustomHeader title="Payments & Shipping" showBack />
-          <Text style={styles.subtext}>
-            This is required in order to place a bid, order or buy a product on
-            a livestream. We charge your card if a bid or offer is accepted.
-          </Text>
+          <CustomHeader title="Account" showBack />
+          
+          <View style={styles.content}>
+            <Text style={styles.subtext}>
+              Set up your payment method and shipping details to start buying and selling on Roundtwo.
+            </Text>
 
-          <TouchableOpacity
-            style={[styles.section, isProcessingPayment && { opacity: 0.5 }]}
-            onPress={openPaymentSheet}
-            disabled={isProcessingPayment}
-          >
-            <Ionicons
-              name="card-outline"
-              size={24}
-              color="#444"
-              style={styles.icon}
-            />
-            <View>
-              <Text style={styles.sectionTitle}>Add Payment Method</Text>
-              {isProcessingPayment ? (
-                <ActivityIndicator size="small" color="#444" style={{ marginTop: 4 }} />
-              ) : (
-                <Text style={styles.sectionSubtitle}>
-                  {paymentSummary || "Please input your payment info."}
-                </Text>
-              )}
-            </View>
-            <Ionicons
-              name="create-outline"
-              size={20}
-              color="#444"
-              style={styles.editIcon}
-            />
-          </TouchableOpacity>
+            {renderSection(
+              "card-outline",
+              "Payment Method",
+              paymentSummary,
+              openPaymentSheet,
+              isProcessingPayment
+            )}
 
+            {renderSection(
+              "cube-outline",
+              "Shipping Address",
+              shippingSummary,
+              openShippingSheet
+            )}
 
-          <TouchableOpacity style={styles.section} onPress={openShippingSheet}>
-            <Ionicons
-              name="cube-outline"
-              size={24}
-              color="#444"
-              style={styles.icon}
-            />
-            <View>
-              <Text style={styles.sectionTitle}>Add Shipping Details</Text>
-              <Text style={styles.sectionSubtitle}>
-                {shippingSummary || "Please input your shipping details."}
-              </Text>
-            </View>
-            <Ionicons
-              name="create-outline"
-              size={20}
-              color="#444"
-              style={styles.editIcon}
-            />
-          </TouchableOpacity>
+            <Text style={styles.disclaimer}>
+              Your payment information is securely stored with Stripe. We only charge your card when a bid is accepted or a purchase is made.
+            </Text>
+          </View>
         </KeyboardAwareScrollView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -195,32 +217,77 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: "#fff",
     flexGrow: 1,
+  },
+  content: {
     padding: 20,
   },
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#000",
+    marginBottom: 8,
+  },
   subtext: {
-    fontSize: 14,
-    color: "gray",
-    marginBottom: 20,
+    fontSize: 15,
+    color: "#666",
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  sectionContainer: {
+    marginBottom: 16,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   section: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 20,
-    borderBottomColor: "#eee",
-    borderBottomWidth: 1,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+  },
+  sectionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f5f5f5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  sectionContent: {
+    flex: 1,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
+    color: "#000",
+    marginBottom: 4,
   },
   sectionSubtitle: {
+    fontSize: 14,
+    color: "#666",
+  },
+  sectionSubtitleEmpty: {
+    color: "#999",
+    fontStyle: "italic",
+  },
+  editIconContainer: {
+    padding: 4,
+  },
+  disclaimer: {
     fontSize: 13,
-    color: "gray",
-  },
-  icon: {
-    marginRight: 12,
-  },
-  editIcon: {
-    marginLeft: "auto",
+    color: "#888",
+    textAlign: "center",
+    marginTop: 24,
+    paddingHorizontal: 20,
+    lineHeight: 18,
   },
 });
