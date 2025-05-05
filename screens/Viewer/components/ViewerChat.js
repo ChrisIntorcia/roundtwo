@@ -68,7 +68,7 @@ export default function ViewerChat({
 
   return (
     <>
-      <BlurView intensity={30} tint="dark" style={styles.chatOverlay}>
+      <BlurView intensity={20} tint="dark" style={styles.chatOverlay}>
           {messages.slice(-4).map((item, index) => {
             const opacityLevels = [0.5, 1, 1, 1];
             const opacity = opacityLevels[index];

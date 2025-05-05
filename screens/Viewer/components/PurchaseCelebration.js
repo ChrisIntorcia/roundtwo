@@ -25,7 +25,7 @@ export default function PurchaseCelebration({ showConfetti, purchaseBanner, clea
 
       {purchaseBanner && (
         <View style={styles.bannerContainer}>
-          <BlurView intensity={30} tint="dark" style={styles.blurBackground}>
+          <BlurView intensity={20} tint="dark" style={styles.blurBackground}>
             <View style={styles.banner}>
               <Text style={styles.bannerText}>{purchaseBanner}</Text>
             </View>

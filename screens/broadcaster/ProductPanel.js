@@ -11,7 +11,7 @@ const ProductPanel = ({ selectedProduct, countdownSeconds, onOpenQueue, onLayout
 
   const PanelWrapper = ({ children }) => (
     <View style={styles.productPanelFull} onLayout={handleLayout}>
-      <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
+      <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
       <View style={{ flexDirection: 'row', paddingHorizontal: 16, flex: 1, alignItems: 'center' }}>
         {children}
       </View>

@@ -22,7 +22,7 @@ import BottomTabs from "./screens/BottomTabs";
 import SellerDetailsScreen from "./screens/SellerDetailsScreen";
 import CreateProductScreen from "./screens/CreateProduct";
 import ProductDetailsScreen from "./screens/ProductDetailsScreen";
-import HomeScreen from "./screens/HomeScreen";
+import HomeScreen from "./screens/homeScreen/HomeScreen";
 import BrowseScreen from "./screens/BrowseScreen";
 import SellerAccountTabs from "./screens/SellerAccountTabs";
 import AccountScreen from "./screens/AccountScreen";

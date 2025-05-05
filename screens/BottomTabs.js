@@ -11,8 +11,8 @@ import {
   Animated,
   PanResponder,
 } from "react-native";
-import HomeScreen from "./HomeScreen";
-import BrowseScreen from "./BrowseScreen";
+import HomeScreen from "./homeScreen/HomeScreen";
+import BrowsePage from "../screens/spinner/BrowsePage";
 import ActivityScreen from "./ActivityScreen";
 import AccountScreen from "./AccountScreen";
 import { AppContext } from "../context/AppContext";
@@ -105,7 +105,16 @@ const BottomTabs = ({ navigation }) => {
   })}
       >
         <Tab.Screen name="Home" component={HomeScreen} />
-        <Tab.Screen name="Browse" component={BrowseScreen} />
+        <Tab.Screen
+  name="Prize"
+  component={BrowsePage}
+  options={{
+    tabBarLabel: 'Prize',
+    tabBarIcon: ({ color, size }) => (
+      <Ionicons name="gift" size={size} color={color} />
+    ),
+  }}
+/>
         {!sellerSetupComplete && (
           <Tab.Screen
             name="Sell"

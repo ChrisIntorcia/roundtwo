@@ -416,7 +416,7 @@ export default function ViewerScreen({ route, navigation }) {
           <TouchableOpacity onPress={() => navigation.navigate('PaymentsShipping')}><Icon name="wallet" size={20} color="#fff" /></TouchableOpacity>
         </View>
 
-        <BlurView intensity={30} tint="dark" style={styles.bottomBlurOverlay} />
+        <BlurView intensity={20} tint="dark" style={styles.bottomBlurOverlay} />
 
         <ViewerChat      
           db={db}
@@ -429,7 +429,7 @@ export default function ViewerScreen({ route, navigation }) {
           styles={styles}
         />
 
-        <BlurView intensity={30} tint="dark" style={styles.productPanelBlur} />
+        <BlurView intensity={20} tint="dark" style={styles.productPanelBlur} />
         <ProductPanel selectedProduct={selectedProduct} countdownSeconds={countdownSeconds} />
 
         <View style={styles.bottomBar}>
