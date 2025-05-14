@@ -8,14 +8,18 @@ import {
   RefreshControl,
   Dimensions,
   ActivityIndicator,
+  Alert,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../../firebaseConfig';
+import { collection, query, where, onSnapshot, doc, getDoc, setDoc } from 'firebase/firestore';
+import { db, auth } from '../../firebaseConfig';
 import CustomHeader from '../../components/CustomHeader';
 import StreamCard from './StreamCard';
 import DailyDrops from './DailyDrops';
 import ProductCard from './ProductCard';
+import { validateUsername } from '../../utils/authUtils';
 
 const { width } = Dimensions.get('window');
 const CARD_MARGIN = 12;
@@ -27,6 +31,9 @@ const HomeScreen = () => {
   const [products, setProducts] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showPopup, setShowPopup] = useState(false);
+  const [missingUsername, setMissingUsername] = useState(false);
+  const [username, setUsername] = useState('');
 
   const fetchLiveStreams = () => {
     const q = query(collection(db, 'livestreams'), where('isLive', '==', true));
@@ -52,9 +59,55 @@ const HomeScreen = () => {
     });
   };
 
+  const checkUserProfile = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        if (!userData.username) {
+          setMissingUsername(true);
+          setShowPopup(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking user profile:', error);
+    }
+  };
+
+  const handleSetUserInfo = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      const updates = {};
+      if (missingUsername && username.trim()) {
+        const validation = validateUsername(username.trim());
+        if (!validation.isValid) {
+          Alert.alert('Invalid Username', validation.error);
+          return;
+        }
+        updates.username = username.trim();
+      }
+
+      if (Object.keys(updates).length > 0) {
+        await setDoc(doc(db, 'users', user.uid), updates, { merge: true });
+      }
+      setShowPopup(false);
+    } catch (error) {
+      console.error('Error updating user info:', error);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    }
+  };
+
   useEffect(() => {
     const unsubscribeStreams = fetchLiveStreams();
     const unsubscribeProducts = fetchProducts();
+    checkUserProfile();
     return () => {
       unsubscribeStreams();
       unsubscribeProducts();
@@ -94,17 +147,16 @@ const HomeScreen = () => {
                 }
                 activeOpacity={0.9}
               >
-              <View style={styles.featuredCard}>
-            <StreamCard
-              imageUrl={liveStreams[0].thumbnailUrl}
-              username={liveStreams[0].streamer}
-              title={liveStreams[0].title}
-              viewerCount={liveStreams[0].viewers}
-              isLive={true}
-              featured={true}
-            />
-          </View>
-
+                <View style={styles.featuredCard}>
+                  <StreamCard
+                    imageUrl={liveStreams[0].thumbnailUrl}
+                    username={liveStreams[0].streamer}
+                    title={liveStreams[0].title}
+                    viewerCount={liveStreams[0].viewers}
+                    isLive={true}
+                    featured={true}
+                  />
+                </View>
               </TouchableOpacity>
             </View>
           )}
@@ -147,11 +199,18 @@ const HomeScreen = () => {
           <View style={styles.section}>
             <View style={styles.productsHeader}>
               <Text style={styles.sectionTitle}>Products</Text>
-              <Text style={styles.linkText}>See all</Text>
+              <TouchableOpacity onPress={() => Alert.alert('Coming Soon')} activeOpacity={0.7}>
+                <Text style={styles.linkText}>See all</Text>
+              </TouchableOpacity>
             </View>
             <View style={styles.productsGrid}>
               {products.map((product) => (
-                <View key={product.id} style={styles.productCard}>
+                <TouchableOpacity
+                  key={product.id}
+                  onPress={() => navigation.navigate('ProductDetailsScreen', { product })}
+                  activeOpacity={0.7}
+                  style={styles.productCard}
+                >
                   <ProductCard
                     imageUrl={product.images?.[0]}
                     name={product.title}
@@ -159,12 +218,57 @@ const HomeScreen = () => {
                     bulkPrice={product.bulkPrice}
                     brand={product.sellerId}
                   />
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           </View>
         </ScrollView>
       )}
+
+      {/* Username Modal */}
+      <Modal 
+        visible={showPopup} 
+        transparent 
+        animationType="fade"
+        onRequestClose={() => {}} // Prevent back button on Android
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Complete Your Profile</Text>
+            {missingUsername && (
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>
+                  Username <Text style={styles.requiredText}>*</Text>
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter username"
+                  value={username}
+                  onChangeText={text => {
+                    const filtered = text.replace(/[^a-zA-Z0-9_.]/g, '');
+                    setUsername(filtered);
+                  }}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <Text style={styles.inputHelper}>
+                  Username must be 3-30 characters, one word only. Letters, numbers, dots, and underscores allowed.
+                </Text>
+              </View>
+            )}
+            <TouchableOpacity 
+              style={[
+                styles.saveButton, 
+                (!username.trim() || !validateUsername(username.trim()).isValid) && styles.buttonDisabled
+              ]} 
+              onPress={handleSetUserInfo}
+              disabled={!username.trim() || !validateUsername(username.trim()).isValid}
+            >
+              <Text style={styles.saveButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -190,6 +294,64 @@ const styles = StyleSheet.create({
   productCard: {
     width: CARD_WIDTH,
     marginBottom: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 24,
+    width: '80%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  inputContainer: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
+    marginBottom: 8,
+    color: '#333',
+  },
+  requiredText: {
+    color: '#E76A54',
+    fontSize: 16,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+  },
+  inputHelper: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  saveButton: {
+    backgroundColor: '#E76A54',
+    padding: 16,
+    borderRadius: 25,
+    alignItems: 'center',
+  },
+  buttonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.7,
+  },
+  saveButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

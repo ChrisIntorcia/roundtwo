@@ -1,6 +1,6 @@
 import { StyleSheet, Dimensions, Platform } from 'react-native';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const WHEEL_SIZE = width * 0.85;
 
 const spinnerStyles = StyleSheet.create({
@@ -8,12 +8,12 @@ const spinnerStyles = StyleSheet.create({
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 40,
-    marginBottom: 50,
+    marginTop: -height * 0.05,
+    marginBottom: 10,
   },
   indicator: {
     position: 'absolute',
-    top: -20,
+    top: -25,
     left: '50%',
     transform: [{ translateX: -25 }],
     width: 0,

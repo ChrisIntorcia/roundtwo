@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   TextInput,
-  Button,
   Text,
   StyleSheet,
   ActivityIndicator,
@@ -9,21 +8,23 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
-  Platform
+  Platform,
+  Alert,
 } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import Checkbox from "expo-checkbox";
+
 import { signUp, login, signInWithApple } from "../authService";
 import { getFriendlyError } from "../utils/authUtils";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebaseConfig";
-import Checkbox from "expo-checkbox"; // ✅ add this if you don't already have it installed
 
 const SignupScreen = ({ navigation }) => {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [agreed, setAgreed] = useState(false); // ✅ new checkbox state
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
@@ -41,17 +42,29 @@ const SignupScreen = ({ navigation }) => {
   }, []);
 
   const handleAppleSignIn = async () => {
+    if (!agreed) {
+      return Alert.alert(
+        "Please accept Terms",
+        "You must agree to the Terms of Use and Privacy Policy before continuing."
+      );
+    }
     try {
       await signInWithApple();
     } catch (err) {
       console.error(err);
+      Alert.alert("Apple Sign-In Error", err.message || err.toString());
     }
   };
 
   const handleSignup = async () => {
     if (loading) return;
     if (!agreed) {
-      setError("You must agree to the Terms of Use and Privacy Policy.");
+      Alert.alert(
+        "Terms Required",
+        "You must agree to the Terms of Use and Privacy Policy before creating an account.",
+        [{ text: "OK" }]
+      );
+      setError("Please accept the Terms of Use and Privacy Policy to continue.");
       return;
     }
     setLoading(true);
@@ -84,6 +97,7 @@ const SignupScreen = ({ navigation }) => {
             cornerRadius={32}
             style={styles.appleButton}
             onPress={handleAppleSignIn}
+            disabled={!agreed}
           />
         )}
 
@@ -111,7 +125,7 @@ const SignupScreen = ({ navigation }) => {
           onChangeText={setPassword}
         />
 
-        {/* ✅ Terms and Conditions Agreement */}
+        {/* EULA Checkbox */}
         <View style={styles.checkboxContainer}>
           <Checkbox
             value={agreed}
@@ -122,14 +136,14 @@ const SignupScreen = ({ navigation }) => {
             I agree to the{" "}
             <Text
               style={styles.linkText}
-              onPress={() => navigation.navigate("TermsOfUse")} // assume you have TermsOfUse screen or link it to a WebView/modal
+              onPress={() => navigation.navigate("TermsOfUse")}
             >
               Terms of Use
             </Text>{" "}
             and{" "}
             <Text
               style={styles.linkText}
-              onPress={() => navigation.navigate("PrivacyPolicy")} // same for Privacy Policy
+              onPress={() => navigation.navigate("PrivacyPolicy")}
             >
               Privacy Policy
             </Text>.
@@ -138,8 +152,16 @@ const SignupScreen = ({ navigation }) => {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <TouchableOpacity onPress={handleSignup} style={styles.signupButton} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.signupText}>Sign up</Text>}
+        <TouchableOpacity
+          onPress={handleSignup}
+          style={[styles.signupButton, (!agreed || loading) && styles.buttonDisabled]}
+          disabled={!agreed || loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.signupText}>Sign up</Text>
+          )}
         </TouchableOpacity>
 
         <Text style={styles.link} onPress={() => navigation.replace("Login")}>

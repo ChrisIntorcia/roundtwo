@@ -179,10 +179,10 @@ const BottomTabs = ({ navigation }) => {
                 style={styles.blueButton}
                 onPress={() => {
                   closeModals();
-                  rootNavigation.navigate("PreStreamSetup"); // ✅ fixed navigation to hide header
+                  rootNavigation.navigate("ScheduleStream"); // ✅ fixed navigation to hide header
                 }}
               >
-                <Text style={styles.optionButtonText}>Start a Live Show</Text>
+                <Text style={styles.optionButtonText}>Plan or Go Live</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.blueButton}

@@ -52,6 +52,11 @@ import TermsOfUseScreen from "./screens/account/TermsOfUseScreen";
 import PrivacyPolicyScreen from "./screens/account/PrivacyPolicyScreen";
 import MessagesScreen from "./screens/account/MessagesScreen";
 import InboxScreen from "./screens/account/InboxScreen";
+import ScheduleStreamScreen from "./screens/ScheduleStreamScreen";
+import ScheduledStreams from "./screens/ScheduledStreams";
+import EditScheduledStream from "./screens/EditScheduledStream";
+import EditProductScreen     from "./screens/sellerHub/EditProductScreen";
+
 
 const linking = {
   prefixes: ["roundtwo://"],
@@ -124,7 +129,7 @@ export default function App() {
               <Stack.Screen name="CreateProductScreen" component={CreateProductScreen} options={{ headerShown: false }} />
               <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ headerShown: false }} />
               <Stack.Screen name="BrowseScreen" component={BrowseScreen} options={{ headerShown: false }} />
-              <Stack.Screen name="ProductDetailsScreen" component={ProductDetailsScreen} options={{ title: "Product Details" }} />
+              <Stack.Screen name="ProductDetailsScreen" component={ProductDetailsScreen} options={{ headerShown: false }} />
               <Stack.Screen name="SellerAccountTabs" component={SellerAccountTabs} options={{ title: "Seller Account", headerShown: false }} />
               <Stack.Screen name="Account" component={AccountScreen} options={{ title: "Account" }} />
               <Stack.Screen name="SellerHub" component={SellerHub} options={{ title: "Seller Hub" }} />
@@ -156,6 +161,10 @@ export default function App() {
               <Stack.Screen name="CottageLaws" component={require('./screens/sellerHub/CottageLaws').default} options={{ headerShown: false }} />
               <Stack.Screen name="TermsOfUse" component={TermsOfUseScreen} options={{ title: "Verify Identity" }} />
               <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ title: "Privacy Policy" }} />
+              <Stack.Screen name="ScheduleStream" component={ScheduleStreamScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="ScheduledStreams" component={ScheduledStreams} options={{ headerShown: false }} />
+              <Stack.Screen name="EditScheduledStream" component={EditScheduledStream} options={{ headerShown: false }} />
+              <Stack.Screen name="EditProductScreen" component={EditProductScreen} options={{ headerShown: false }} />
             </Stack.Navigator>
           </NavigationContainer>
         </AppProvider>

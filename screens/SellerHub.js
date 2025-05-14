@@ -46,8 +46,11 @@ const SellerHub = () => {
         </View>
 
         <TouchableOpacity style={styles.option} onPress={() => navigation.navigate("AffiliateProgram")}>
-  <Text style={styles.optionText}>Affiliate Program: Earn Cash</Text>
-</TouchableOpacity>
+          <Text style={styles.optionText}>Affiliate Program: Earn Cash</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.option} onPress={() => navigation.navigate("ScheduledStreams")}>
+          <Text style={styles.optionText}>Scheduled Streams</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.option}>
           <Text style={styles.optionText}>Offers</Text>
         </TouchableOpacity>

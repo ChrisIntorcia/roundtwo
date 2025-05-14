@@ -445,7 +445,7 @@ const userId = auth.currentUser.uid;
       />
 
 <BlurView
-  intensity={20}
+  intensity={0}
   tint="dark"
   style={[
     styles.chatOverlay,

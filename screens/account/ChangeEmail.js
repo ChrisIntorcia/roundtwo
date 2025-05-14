@@ -13,16 +13,14 @@ import {
   SafeAreaView,
   ActivityIndicator,
 } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from "@react-navigation/native";
 import { auth } from "../../firebaseConfig";
 import {
   EmailAuthProvider,
   reauthenticateWithCredential,
-  updateEmail,
+  verifyBeforeUpdateEmail,
 } from "firebase/auth";
-import { getFirestore, doc, updateDoc } from "firebase/firestore";
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from "@react-navigation/native";
 
 const ChangeEmail = () => {
   const [newEmail, setNewEmail] = useState("");
@@ -31,7 +29,6 @@ const ChangeEmail = () => {
   const navigation = useNavigation();
 
   const user = auth.currentUser;
-  const db = getFirestore();
 
   const handleChangeEmail = async () => {
     if (!newEmail || !password) {
@@ -40,25 +37,30 @@ const ChangeEmail = () => {
     }
 
     setLoading(true);
-
     try {
+      // Reauthenticate the user
       const credential = EmailAuthProvider.credential(user.email, password);
       await reauthenticateWithCredential(user, credential);
-      await updateEmail(user, newEmail);
 
-      const userRef = doc(db, "users", user.uid);
-      await updateDoc(userRef, { email: newEmail });
+      // Send verify-then-update email to the new address
+      await verifyBeforeUpdateEmail(user, newEmail, {
+        url: "https://roundtwo-cc793.web.app/email-verification",
+        handleCodeInApp: false, // set true if using Firebase Dynamic Links
+      });
 
       Alert.alert(
-        "Success", 
-        "Your email has been updated successfully.",
-        [{ text: "OK", onPress: () => navigation.goBack() }]
+        "Verification Sent",
+        "Check your new inbox for the link. Once you click it, your email will be updated automatically."
       );
+
+      // Optionally clear inputs
+      setNewEmail("");
+      setPassword("");
     } catch (error) {
-      console.error("Email Update Error:", error);
+      console.error("Email Change Error:", error);
       Alert.alert(
         "Error",
-        error.code === "auth/wrong-password" 
+        error.code === "auth/wrong-password"
           ? "Incorrect password. Please try again."
           : error.message
       );
@@ -76,7 +78,7 @@ const ChangeEmail = () => {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.content}>
             <View style={styles.header}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.backButton}
                 onPress={() => navigation.goBack()}
               >
@@ -129,7 +131,7 @@ const ChangeEmail = () => {
                 {loading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.buttonText}>Update Email</Text>
+                  <Text style={styles.buttonText}>Send Verification</Text>
                 )}
               </TouchableOpacity>
             </View>

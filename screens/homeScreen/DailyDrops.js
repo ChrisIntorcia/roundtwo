@@ -1,37 +1,37 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Image,
+  Alert,
+  TouchableOpacity,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
 
-// 1) Require your local image
-const sourstreamImg = require('../../assets/sourstream.png');
-
-const drops = [
-  {
-    title: 'New Gaming Peripherals',
-    time: 'Thursday at 7PM',
-    // 2) Use the require’d image here
-    imageUrl: sourstreamImg,
-  },
-  {
-    title: 'Limited Edition Merch',
-    time: 'Tomorrow at 2PM',
-    imageUrl: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?auto=format&fit=crop&w=500&h=280',
-  },
-  {
-    title: 'Exclusive Stream Access',
-    time: 'Wed at 9PM',
-    imageUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=500&h=280',
-  },
-];
+// helper to format ISO → "Thursday at 7PM"
+const formatDate = iso => {
+  const d = new Date(iso);
+  const weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
+  let hour = d.getHours();
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12 || 12;
+  return `${weekday} at ${hour}${ampm}`;
+};
 
 const DropCard = ({ title, time, imageUrl }) => {
-  // 3) Detect whether it's a URI or a bundled asset
   const source = typeof imageUrl === 'string'
     ? { uri: imageUrl }
     : imageUrl;
 
+  const handlePress = () => {
+    Alert.alert('Streaming Live', time);
+  };
+
   return (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={handlePress}>
       <Image source={source} style={styles.image} resizeMode="cover" />
       <View style={styles.cardContent}>
         <Text style={styles.title} numberOfLines={1}>{title}</Text>
@@ -40,16 +40,48 @@ const DropCard = ({ title, time, imageUrl }) => {
           <Text style={styles.timeText}>{time}</Text>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
 const DailyDrops = () => {
+  const [drops, setDrops] = useState([]);
+
+  useEffect(() => {
+    const fetchDrops = async () => {
+      const db = getFirestore();
+      const snap = await getDocs(collection(db, 'scheduledStreams'));
+      const list = snap.docs.map(doc => {
+        const data = doc.data();
+        return {
+          title: data.title,
+          time: formatDate(data.date),
+          imageUrl: data.coverImage,
+        };
+      });
+      setDrops(list);
+    };
+    fetchDrops();
+  }, []);
+
+  const handleViewAll = () => {
+    if (drops.length === 0) {
+      Alert.alert('No scheduled streams', 'There are no streams scheduled.');
+      return;
+    }
+    const listText = drops
+      .map((d, i) => `${i + 1}. ${d.title} — ${d.time}`)
+      .join('\n');
+    Alert.alert('Scheduled Streams', listText);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.sectionTitle}>Daily Drops</Text>
-        <Text style={styles.viewAll}>View all</Text>
+        <TouchableOpacity onPress={handleViewAll}>
+          <Text style={styles.viewAll}>View all</Text>
+        </TouchableOpacity>
       </View>
       <FlatList
         data={drops}

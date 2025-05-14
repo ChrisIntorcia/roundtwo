@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Animated, View, Text, TouchableOpacity, StyleSheet, Share, Alert, Dimensions } from 'react-native';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, updateDoc, setDoc, increment } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import Spinner from '../spinner/Spinner'; // ✅ confirmed path
+import { Modal, ScrollView } from 'react-native';
+import ShareButton from './Share';
 
 const MAX_SPINS_PER_DAY = 2;
-const getTodayDateKey = () => new Date().toISOString().split('T')[0];
+const getTodayDateKey = () => new Date().toLocaleDateString('en-CA'); // "YYYY-MM-DD" in Mountain Time
 
 const PRIZES = [
   { label: '1 Entry', value: 1 },
@@ -28,7 +30,7 @@ const { width, height } = Dimensions.get('window');
 export default function BrowsePage() {
   const [totalEntries, setTotalEntries] = useState(0);
   const [referralLink, setReferralLink] = useState('');
-  const [spinCount, setSpinCount] = useState(0);
+  const [availableSpins, setAvailableSpins] = useState(1);
   const [hasShared, setHasShared] = useState(false);
   const [lastPrize, setLastPrize] = useState(null);
   const [showPrize, setShowPrize] = useState(false);
@@ -36,27 +38,61 @@ export default function BrowsePage() {
   const auth = getAuth();
   const firestore = getFirestore();
   const user = auth.currentUser;
+  const [showRulesModal, setShowRulesModal] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
-      const userRef = doc(firestore, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        const data = userSnap.data();
-        setTotalEntries(data.giveawayEntries || 0);
-        setSpinCount(data.spinCountToday || 0);
+      try {
+        // Fetch entries
+        const entriesRef = doc(firestore, 'entries', user.uid);
+        const entriesSnap = await getDoc(entriesRef);
+        if (entriesSnap.exists()) {
+          setTotalEntries(entriesSnap.data().entryCount || 0);
+        } else {
+          // Initialize entries if they don't exist
+          await setDoc(entriesRef, {
+            entryCount: 0,
+            displayName: user.displayName || '',
+            lastUpdated: new Date().toISOString()
+          });
+          setTotalEntries(0);
+        }
+
+        // Fetch user data
+        const userRef = doc(firestore, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
         setReferralLink(`https://stogora.com/?ref=${user.uid}`);
         const today = getTodayDateKey();
-        if (data.lastSpinDate !== today) {
-          await updateDoc(userRef, {
-            spinCountToday: 0,
+        
+        if (!userSnap.exists()) {
+          // First-time user: create their doc
+          await setDoc(userRef, {
+            spinCountToday: 1,
             lastSpinDate: today,
             hasSharedToday: false
           });
-          setSpinCount(0);
+          setAvailableSpins(1);
           setHasShared(false);
+        } else {
+          const data = userSnap.data();
+          if (data.lastSpinDate !== today) {
+            // New day: reset spins
+            await updateDoc(userRef, {
+              spinCountToday: 1,
+              lastSpinDate: today,
+              hasSharedToday: false
+            });
+            setAvailableSpins(1);
+            setHasShared(false);
+          } else {
+            // Same day: use stored count
+            setAvailableSpins(data.spinCountToday || 1);
+            setHasShared(data.hasSharedToday || false);
+          }
         }
+      } catch (error) {
+        console.error('Error fetching data:', error);
       }
     };
     fetchData();
@@ -66,6 +102,15 @@ export default function BrowsePage() {
     try {
       await Share.share({ message: referralLink });
       setHasShared(true);
+      const newSpins = availableSpins + 1;
+      setAvailableSpins(newSpins);
+      
+      // Update Firestore
+      const userRef = doc(firestore, 'users', user.uid);
+      await updateDoc(userRef, {
+        spinCountToday: newSpins,
+        hasSharedToday: true
+      });
     } catch (e) {
       console.error(e);
     }
@@ -87,7 +132,7 @@ export default function BrowsePage() {
   };
 
   const handleSpinComplete = async (prize) => {
-    if (!user) return;
+    if (!user || availableSpins <= 0) return;
 
     setLastPrize(prize);
     animatePrize();
@@ -99,7 +144,6 @@ export default function BrowsePage() {
           onPress: async () => {
             await handleShare();
             await applyReward(prize.rewardOnShare || 2);
-            await incrementSpin();
           }
         }
       ]);
@@ -107,27 +151,31 @@ export default function BrowsePage() {
     }
 
     await applyReward(prize.value);
-    if (!prize.spinAgain) {
-      await incrementSpin();
-    }
+    const newSpins = availableSpins - 1;
+    setAvailableSpins(newSpins);
+    
+    // Update Firestore
+    const userRef = doc(firestore, 'users', user.uid);
+    await updateDoc(userRef, {
+      spinCountToday: newSpins
+    });
   };
 
   const applyReward = async (value) => {
-    const newTotal = totalEntries + value;
-    setTotalEntries(newTotal);
-    await setDoc(doc(firestore, 'users', user.uid), {
-      hasSharedToday: true
-    }, { merge: true });
-    setHasShared(true);
-  };
-
-  const incrementSpin = async () => {
-    const newCount = spinCount + 1;
-    setSpinCount(newCount);
-    await setDoc(doc(firestore, 'users', user.uid), {
-      spinCountToday: newCount,
-      lastSpinDate: getTodayDateKey()
-    }, { merge: true });
+    try {
+      const newTotal = totalEntries + value;
+      setTotalEntries(newTotal);
+      
+      // Update entries in Firestore
+      const entriesRef = doc(firestore, 'entries', user.uid);
+      await updateDoc(entriesRef, {
+        entryCount: newTotal,
+        displayName: user.displayName || '',
+        lastUpdated: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error applying reward:', error);
+    }
   };
 
   return (
@@ -136,20 +184,19 @@ export default function BrowsePage() {
         <View style={styles.container}>
           <View style={styles.headerContainer}>
             <Text style={styles.header}>🎯 You have {totalEntries} entries</Text>
+            <Text style={styles.spinsText}>🎲 {availableSpins} spin{availableSpins !== 1 ? 's' : ''} remaining today</Text>
             <View style={styles.referralSection}>
               <Text style={styles.referralText}>Your Referral Link:</Text>
-              <TouchableOpacity onPress={handleShare} style={styles.copyButton}>
-                <Text style={styles.copyButtonText}>Share Link</Text>
-              </TouchableOpacity>
+              <ShareButton onShare={handleShare} />
             </View>
           </View>
 
           <View style={styles.spinnerContainer}>
-          <Spinner
-            prizes={PRIZES}
-            onSpinComplete={handleSpinComplete}
-            canSpin={true} // unlimited spins
-/>
+            <Spinner
+              prizes={PRIZES}
+              onSpinComplete={handleSpinComplete}
+              canSpin={availableSpins > 0}
+            />
           </View>
 
           {showPrize && lastPrize && (
@@ -171,17 +218,57 @@ export default function BrowsePage() {
             </Animated.View>
           )}
 
-          <View style={styles.footer}>
-            <Text style={styles.subheader}>
-              🔄 1 free spin daily · Share for spins!
-            </Text>
-            <Text style={styles.cta}>
-              Top 3 referrers win free Sour Champion candy. Watch live Thursday at 7PM.
-            </Text>
-          </View>
-        </View>
-      </View>
-    </LinearGradient>
+<View style={styles.footer}>
+  <Text style={styles.subheader}>
+    🔄 1 free spin daily · Share for spins!
+  </Text>
+  <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', marginTop: 4 }}>
+    <Text style={styles.cta}>
+      Every stream we give away hundreds of dollars of prizes to viewers! Share for entries and Watch live Thursdays at 7pm EST.{' '}
+    </Text>
+    <TouchableOpacity onPress={() => setShowRulesModal(true)}>
+      <Text style={[styles.cta, { textDecorationLine: 'underline', fontWeight: 'bold' }]}>
+       View Giveaway Rules
+      </Text>
+    </TouchableOpacity>
+  </View>
+</View>
+
+
+      <Modal
+  visible={showRulesModal}
+  animationType="slide"
+  transparent={true}
+  onRequestClose={() => setShowRulesModal(false)}
+>
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalContent}>
+      <ScrollView>
+        <Text style={styles.rulesHeader}>🎯 Giveaway Official Rules</Text>
+        <Text style={styles.rulesText}>
+  No purchase necessary to enter or win. Open to legal residents of the United States who are 18 years of age or older. Void where prohibited.
+
+  {"\n\n"}To enter, users may spin the prize wheel by either: (a) sharing their referral link, or (b) joining a livestream. Each user may receive up to 2 spins per day. Spins earn entries into a weekly giveaway.
+
+  {"\n\n"}Giveaways are held live every Thursday at 7:00 PM EST during the livestream. Winners are selected at random from the pool of eligible entries and announced live. Odds of winning depend on the total number of entries received.
+
+  {"\n\n"}Prizes vary weekly and may include digital items, gift cards, or physical goods. All prizes will be delivered electronically or via email, unless otherwise specified.
+
+  {"\n\n"}This contest is in no way sponsored, endorsed, or administered by, or associated with Apple Inc.
+
+  {"\n\n"}By participating, you agree to the official rules and decisions of Stogora, which are final and binding. For questions or support, contact support@stogora.com.
+</Text>
+
+        <TouchableOpacity onPress={() => setShowRulesModal(false)} style={styles.closeButton}>
+          <Text style={styles.closeButtonText}>Close</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  </View>
+</Modal>
+</View>       
+</View>       
+</LinearGradient> 
   );
 }
 
@@ -198,71 +285,82 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 40,
+    paddingTop: 40,
+    paddingBottom: 20,
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
   headerContainer: {
     alignItems: 'center',
     width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    padding: 15,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    marginBottom: 15,
   },
   header: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#213E4D',
-    marginBottom: 20,
+    marginBottom: 10,
     textShadowColor: 'rgba(0, 0, 0, 0.1)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  spinsText: {
+    fontSize: 20,
+    color: '#E76A54',
+    marginBottom: 10,
+    fontWeight: '600',
+    backgroundColor: 'rgba(231, 106, 84, 0.1)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 15,
+    overflow: 'hidden',
   },
   referralSection: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    padding: 15,
-    borderRadius: 12,
+    padding: 12,
+    borderRadius: 15,
     width: '100%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(231, 106, 84, 0.1)',
   },
   referralText: {
     fontSize: 16,
     color: '#213E4D',
     marginRight: 10,
-  },
-  copyButton: {
-    backgroundColor: '#E76A54',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
-    shadowColor: '#E76A54',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 5,
-  },
-  copyButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontWeight: '500',
   },
   spinnerContainer: {
-    flex: 1,
+    width: '100%',
+    aspectRatio: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    width: '100%',
+    marginTop: 10,
+    marginBottom: 10,
   },
   prizeContainer: {
+    position: 'absolute',
+    bottom: 15,
+    left: 20,
+    right: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    padding: 25,
-    borderRadius: 15,
+    padding: 20,
+    borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -271,8 +369,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(231, 106, 84, 0.2)',
     alignItems: 'center',
-  }
-  ,
+    zIndex: 1000,
+  },
   prizeText: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -282,34 +380,79 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  prizeWrapper: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [
-      { translateX: -150 },
-      { translateY: -75 }
-    ],
-    width: 200,
-    zIndex: 100,
-  },
   footer: {
     width: '100%',
     alignItems: 'center',
-    paddingTop: 20,
+    padding: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginTop: 'auto',
   },
   subheader: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#213E4D',
     textAlign: 'center',
-    marginBottom: 10,
-    fontWeight: '500',
+    marginBottom: 8,
+    fontWeight: '600',
   },
   cta: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#213E4D',
     textAlign: 'center',
-    lineHeight: 20,
-    opacity: 0.8,
+    lineHeight: 22,
+    opacity: 0.9,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 25,
+    borderRadius: 20,
+    width: '90%',
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 15,
+  },
+  rulesHeader: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#213E4D',
+    textAlign: 'center',
+  },
+  rulesText: {
+    fontSize: 15,
+    color: '#213E4D',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  closeButton: {
+    backgroundColor: '#E76A54',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 15,
+    shadowColor: '#E76A54',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });

@@ -15,6 +15,7 @@ import BrowseScreen from "./screens/BrowseScreen"; // ✅ Renamed HomeScreen
 import SellerAccountTabs from "./screens/SellerAccountTabs";
 import AccountScreen from "./screens/AccountScreen";
 import SellerHub from "./screens/SellerHub";
+import ScheduleStreamScreen from './screens/ScheduleStreamScreen';
 
 const Stack = createStackNavigator();
 

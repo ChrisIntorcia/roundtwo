@@ -17,6 +17,7 @@ import {
   Animated,
   Share,
   Modal,
+  KeyboardAvoidingView,
 } from 'react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -38,7 +39,8 @@ import {
   orderBy,
   setDoc,
   deleteDoc,
-  updateDoc
+  updateDoc,
+  addDoc
 } from 'firebase/firestore';
 import { auth } from '../../firebaseConfig';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -85,6 +87,7 @@ export default function ViewerScreen({ route, navigation }) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [purchaseBanner, setPurchaseBanner] = useState(null);
   const [productPanelHeight, setProductPanelHeight] = useState(200); // fallback default
+  const [showQuantityModal, setShowQuantityModal] = useState(false);
 
 
   useEffect(() => {
@@ -351,23 +354,27 @@ export default function ViewerScreen({ route, navigation }) {
   const sendMessage = async () => {
     const user = auth.currentUser;
     if (!chatInput.trim() || !user) return;
-  
+
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     const senderName =
       userDoc.data()?.username ||
       userDoc.data()?.displayName ||
       user.email.split('@')[0];
-  
+
     // Filter the chat message
     const filteredMessage = filterText(chatInput);
-  
-    await addDoc(collection(db, 'livestreams', channel, 'messages'), {
-      text: filteredMessage,
-      sender: senderName,
-      createdAt: new Date(),
-    });
-  
-    setChatInput('');
+
+    try {
+      await addDoc(collection(db, 'livestreams', channel, 'messages'), {
+        text: filteredMessage,
+        sender: senderName,
+        createdAt: new Date(),
+      });
+      setChatInput('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
+    }
   };  
 
   const { handleBuy, isPurchasing } = usePurchase({
@@ -379,6 +386,10 @@ export default function ViewerScreen({ route, navigation }) {
   });  
   
   const displayUid = remoteUid || broadcasterUidRef.current;
+
+  const adjustQuantity = (amount) => {
+    setPurchaseQty(prev => Math.max(1, prev + amount));
+  };
 
   if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: '#000' }} color="#E76A54" />;
 
@@ -416,7 +427,7 @@ export default function ViewerScreen({ route, navigation }) {
           <TouchableOpacity onPress={() => navigation.navigate('PaymentsShipping')}><Icon name="wallet" size={20} color="#fff" /></TouchableOpacity>
         </View>
 
-        <BlurView intensity={20} tint="dark" style={styles.bottomBlurOverlay} />
+        <BlurView intensity={0} tint="dark" style={styles.bottomBlurOverlay} />
 
         <ViewerChat      
           db={db}
@@ -429,22 +440,69 @@ export default function ViewerScreen({ route, navigation }) {
           styles={styles}
         />
 
-        <BlurView intensity={20} tint="dark" style={styles.productPanelBlur} />
+        <BlurView intensity={0} tint="dark" style={styles.productPanelBlur} />
         <ProductPanel selectedProduct={selectedProduct} countdownSeconds={countdownSeconds} />
 
-        <View style={styles.bottomBar}>
-          <BuyButton
-            selectedProduct={selectedProduct}
-            purchaseQty={purchaseQty}
-            setPurchaseQty={setPurchaseQty}
-            handleBuy={handleBuy}
-            swipeKey={swipeKey}
-            setSwipeKey={setSwipeKey}
-            swipeRef={swipeRef}
-            isPurchasing={isPurchasing}
-            db={db}
-            navigation={navigation}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.chatInputWrapper}
+        >
+          <TextInput
+            value={chatInput}
+            onChangeText={setChatInput}
+            placeholder="Say something..."
+            placeholderTextColor="#aaa"
+            style={styles.chatInput}
+            onSubmitEditing={sendMessage}
+            returnKeyType="send"
           />
+          <TouchableOpacity onPress={sendMessage}>
+            <Text style={styles.sendButton}>Send</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.optionsButton}
+            onPress={() => setShowQuantityModal(!showQuantityModal)}
+          >
+            <Icon name="options-outline" size={20} color="#E76A54" />
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+
+        {showQuantityModal && (
+          <View style={styles.quantityModal}>
+            <View style={styles.quantityRow}>
+              <Text style={styles.quantityLabel}>Quantity:</Text>
+              <View style={styles.quantityControls}>
+                <TouchableOpacity 
+                  style={styles.qtyButton}
+                  onPress={() => adjustQuantity(-1)}
+                >
+                  <Text style={styles.qtyButtonText}>-</Text>
+                </TouchableOpacity>
+                <Text style={styles.qtyText}>{purchaseQty}</Text>
+                <TouchableOpacity 
+                  style={styles.qtyButton}
+                  onPress={() => adjustQuantity(1)}
+                >
+                  <Text style={styles.qtyButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        <View style={[styles.bottomBar, { bottom: 70 }]}>
+          <TouchableOpacity 
+            style={[
+              styles.buyButton,
+              (!selectedProduct || isPurchasing) && styles.buyButtonDisabled
+            ]}
+            onPress={handleBuy}
+            disabled={!selectedProduct || isPurchasing}
+          >
+            <Text style={styles.buyButtonText}>
+              {isPurchasing ? 'Processing...' : selectedProduct ? `Buy Now (${purchaseQty})` : 'No Product Selected'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <PurchaseCelebration

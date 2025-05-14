@@ -16,7 +16,7 @@
     },
     "ios": {
       "buildNumber": "2",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.chrisintorcia.roundtwo",
       "infoPlist": {
         "NSCameraUsageDescription": "Allow this app to access your camera",

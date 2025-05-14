@@ -17,7 +17,6 @@ const ProductCard = ({ imageUrl, name, fullPrice, bulkPrice, brand }) => {
         resizeMode="cover"
       />
       <View style={styles.content}>
-        <Text style={styles.brand}>{brand}</Text>
         <Text style={styles.name} numberOfLines={1}>{name}</Text>
         <View style={styles.row}>
           <View style={styles.priceGroup}>

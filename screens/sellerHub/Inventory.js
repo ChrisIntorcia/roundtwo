@@ -74,32 +74,46 @@ const Inventory = () => {
     }
   };
 
-  const renderRightActions = (progress, dragX, product) => (
-    <TouchableOpacity
-      onPress={() =>
-        Alert.alert(
-          "Delete Product",
-          "Are you sure you want to delete this product? This action cannot be undone.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Delete", style: "destructive", onPress: () => deleteProduct(product) },
-          ]
-        )
-      }
-      style={styles.deleteButton}
-    >
-      <Ionicons name="trash-outline" size={24} color="#fff" />
-      <Text style={styles.deleteText}>Delete</Text>
-    </TouchableOpacity>
+  const renderRightActions = (item) => (
+    <View style={styles.rightAction}>
+      <TouchableOpacity
+        style={styles.swipeEditButton}
+        onPress={() => {
+          navigation.navigate("EditProductScreen", { product: item });
+        }}
+      >
+        <Ionicons name="pencil-outline" size={24} color="#666" />
+        <Text style={styles.editText}>Edit</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => {
+          Alert.alert(
+            "Delete Product",
+            "Are you sure you want to delete this product? This action cannot be undone.",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Delete", style: "destructive", onPress: () => deleteProduct(item) },
+            ]
+          );
+        }}
+      >
+        <Ionicons name="trash-outline" size={24} color="#666" />
+        <Text style={styles.deleteText}>Delete</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   const renderItem = ({ item }) => (
     <Swipeable
       friction={2}
+      leftThreshold={30}
+      rightThreshold={30}
+      renderRightActions={() => renderRightActions(item)}
+      overshootLeft={false}
       overshootRight={false}
-      renderRightActions={(progress, dragX) =>
-        renderRightActions(progress, dragX, item)
-      }
+      leftActivationDistance={50}
+      rightActivationDistance={50}
     >
       <TouchableOpacity 
         style={styles.card}
@@ -138,7 +152,7 @@ const Inventory = () => {
             )}
           </View>
         </View>
-        <TouchableOpacity style={styles.editButton}>
+        <TouchableOpacity style={styles.chevronButton}>
           <Ionicons name="chevron-forward" size={20} color="#999" />
         </TouchableOpacity>
       </TouchableOpacity>
@@ -297,10 +311,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   editButton: {
-    padding: 8,
-  },
-  deleteButton: {
-    backgroundColor: "#FF3B30",
+    backgroundColor: "#4CAF50",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
@@ -308,8 +319,20 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     width: SCREEN_WIDTH * 0.25,
   },
+  editText: {
+    color: "#666",
+    fontWeight: "600",
+    marginTop: 4,
+    fontSize: 12,
+  },
+  deleteButton: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    height: '100%',
+  },
   deleteText: {
-    color: "#fff",
+    color: "#666",
     fontWeight: "600",
     marginTop: 4,
     fontSize: 12,
@@ -368,6 +391,22 @@ const styles = StyleSheet.create({
     textAlign: "center",
     maxWidth: "80%",
     lineHeight: 20,
+  },
+  chevronButton: {
+    padding: 8,
+  },
+  rightAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingLeft: 16,
+  },
+  swipeEditButton: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    height: '100%',
+    marginRight: 8,
   },
 });
 
