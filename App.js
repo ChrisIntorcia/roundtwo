@@ -56,6 +56,7 @@ import ScheduleStreamScreen from "./screens/ScheduleStreamScreen";
 import ScheduledStreams from "./screens/ScheduledStreams";
 import EditScheduledStream from "./screens/EditScheduledStream";
 import EditProductScreen     from "./screens/sellerHub/EditProductScreen";
+import OrderDetailsScreen from "./screens/OrderDetailsScreen";
 
 
 const linking = {
@@ -165,6 +166,7 @@ export default function App() {
               <Stack.Screen name="ScheduledStreams" component={ScheduledStreams} options={{ headerShown: false }} />
               <Stack.Screen name="EditScheduledStream" component={EditScheduledStream} options={{ headerShown: false }} />
               <Stack.Screen name="EditProductScreen" component={EditProductScreen} options={{ headerShown: false }} />
+              <Stack.Screen name="OrderDetailsScreen" component={OrderDetailsScreen} options={{ title: "Order Details" }} />
             </Stack.Navigator>
           </NavigationContainer>
         </AppProvider>

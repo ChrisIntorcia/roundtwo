@@ -99,10 +99,10 @@ const ActivityScreen = ({ navigation }) => {
         activityItems.push({
           type: "purchase",
           timestamp: data.purchasedAt?.toDate?.() || new Date(),
-          title: `You purchased "${data.title}"`,
+          title: `You purchased \"${data.title}\"`,
           subtitle: `$${data.price}`,
           image: data.image || null,
-          onPress: () => {},
+          onPress: () => navigation.navigate("OrderDetailsScreen", { orderId: data.orderId || docSnap.id }),
         });
       }
 
@@ -116,7 +116,7 @@ const ActivityScreen = ({ navigation }) => {
             : `You need to ship "${data.title}"`,
           subtitle: data.fulfilled ? "Order completed" : "Action required",
           image: null,
-          onPress: () => navigation.navigate("Order"),
+          onPress: () => navigation.navigate("OrderDetailsScreen", { orderId: docSnap.id }),
         });
       }
 
@@ -170,7 +170,17 @@ const ActivityScreen = ({ navigation }) => {
         });
       }
 
-      const grouped = activityItems.reduce((acc, item) => {
+      // Log all activity items for debugging
+      console.log('Activity items:', activityItems);
+      const validActivityItems = activityItems.filter(item => {
+        if (!item.timestamp || isNaN(new Date(item.timestamp).getTime())) {
+          console.warn('Skipping activity item with invalid timestamp:', item);
+          return false;
+        }
+        return true;
+      });
+
+      const grouped = validActivityItems.reduce((acc, item) => {
         const group = formatDateGroup(item.timestamp);
         if (!acc[group]) acc[group] = [];
         acc[group].push(item);

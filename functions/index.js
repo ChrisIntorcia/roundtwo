@@ -1,4 +1,6 @@
+const functions = require("firebase-functions");
 const { onRequest } = require("firebase-functions/v2/https");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const { getFirestore } = require("firebase-admin/firestore");
 const { initializeApp } = require("firebase-admin/app");
@@ -30,59 +32,6 @@ async function createStripeAccountIfNeeded(stripe, uid) {
 
   return stripeAccountId;
 }
-
-// ✅ Checkout session
-exports.createCheckoutSession = onRequest({
-  secrets: [STRIPE_SECRET_KEY],
-  timeoutSeconds: 60,
-  memory: "256Mi",
-  cpu: 1,
-}, async (req, res) => {
-  cors(req, res, async () => {
-    try {
-      const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
-      const { productId, buyerEmail } = req.body;   // 👈 FRONTEND MUST SEND productId NOW
-
-      if (!productId || !buyerEmail) {
-        return res.status(400).json({ error: "Missing productId or buyerEmail" });
-      }
-
-      // Fetch product from Firestore
-      const productRef = db.collection("products").doc(productId);
-      const productSnap = await productRef.get();
-
-      if (!productSnap.exists) {
-        return res.status(404).json({ error: "Product not found" });
-      }
-
-      const product = productSnap.data();
-
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ["card"],
-        line_items: [{
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: product.title,
-              tax_code: product.taxCode || 'txcd_31010000',  // 👈 pass dynamic taxCode (fallback if missing)
-            },
-            unit_amount: Math.round(product.fullPrice * 100),
-          },
-          quantity: 1,
-        }],
-        mode: "payment",
-        customer_email: buyerEmail,
-        success_url: "https://yourdomain.com/success",   // update to real app URLs
-        cancel_url: "https://yourdomain.com/cancel",
-      });
-
-      res.status(200).json({ url: session.url });
-    } catch (err) {
-      console.error("❌ createCheckoutSession error:", err.message);
-      res.status(500).json({ error: err.message });
-    }
-  });
-});
 
 // ✅ Get Stripe Balance
 exports.getStripeBalance = onRequest({
@@ -210,88 +159,240 @@ exports.verifyStripeStatus = onRequest({
   });
 });
 
-exports.createPaymentIntent = onRequest({
-  secrets: [STRIPE_SECRET_KEY],
-  timeoutSeconds: 60,
-  memory: "256Mi",
-  cpu: 1,
-}, async (req, res) => {
+exports.createCartPaymentIntent = onRequest({ secrets: [STRIPE_SECRET_KEY] }, async (req, res) => {
   cors(req, res, async () => {
-    if (req.method !== 'POST') {
-      return res.status(405).send('Method Not Allowed');
-    }
-
     try {
       const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
-      const { productId, stripeAccountId, buyerEmail, application_fee_amount } = req.body;
+      const { channel, uid } = req.body;
 
-      if (!productId || !stripeAccountId || !buyerEmail) {
-        return res.status(400).json({ error: "Missing required fields" });
+      if (!channel || !uid) {
+        return res.status(400).json({ error: "Missing channel or uid" });
       }
 
-      const db = getFirestore();
-      const productRef = db.collection('products').doc(productId);
-      const productSnap = await productRef.get();
+      const userRef = db.collection("users").doc(uid);
+      const userSnap = await userRef.get();
+      const user = userSnap.data();
 
-      if (!productSnap.exists) {
-        return res.status(404).json({ error: "Product not found" });
+      if (!user?.hasSavedPaymentMethod || !user?.shippingAddress || !user?.stripeCustomerId) {
+        return res.status(400).json({ error: "Missing payment or shipping info" });
       }
 
-      const product = productSnap.data();
+      const cartRef = db.collection("livestreamCarts").doc(channel).collection("users").doc(uid);
+      let cartSnap = await cartRef.get();
+      let cartData = cartSnap.exists ? cartSnap.data() : null;
 
-      const customers = await stripe.customers.list({ email: buyerEmail });
-      let customer = customers.data[0];
-
-      if (!customer) {
-        customer = await stripe.customers.create({ email: buyerEmail });
+      if (!cartData || !cartData.items || cartData.items.length === 0) {
+        return res.status(400).json({ error: "Cart is empty or missing" });
       }
 
-      const paymentMethods = await stripe.paymentMethods.list({
-        customer: customer.id,
-        type: "card",
-      });
+      let total = 0;
+      const lineItems = [];
 
-      const defaultPaymentMethod = paymentMethods.data[0];
+      for (let i = 0; i < cartData.items.length; i++) {
+        const item = cartData.items[i];
+        const price = item.bulkPrice || item.price || 0;
+        const quantity = item.quantity || 1;
+        const shipping = i === 0 ? item.shippingRate : 0;
+        const subtotal = (price * quantity) + shipping;
+        total += subtotal;
 
-      if (!defaultPaymentMethod) {
-        return res.status(400).json({ error: "No saved payment method found." });
+        lineItems.push({
+          productId: item.productId,
+          title: item.title,
+          sellerId: item.sellerId,
+          quantity: item.quantity,
+          price,
+          shipping,
+          subtotal,
+        });
       }
 
-      // 🔥 Tax Calculation
-      const TAX_RATE_PERCENT = 0.07; // 7% flat sales tax
-      const basePrice = product.bulkPrice; // ✅ bulk price, since they're buying live
-      const shippingRate = product.shippingRate || 0; // Get shipping rate
-      const taxableAmount = basePrice + shippingRate; // Calculate tax on price + shipping
-      const taxAmount = taxableAmount * TAX_RATE_PERCENT;
-      const totalAmount = Math.round((basePrice + shippingRate + taxAmount) * 100); // Total in cents
+      const customer = await stripe.customers.retrieve(user.stripeCustomerId);
+      const paymentMethodId = customer.invoice_settings.default_payment_method;
+      if (!paymentMethodId) throw new Error("No default payment method found");
 
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: totalAmount,
+        amount: Math.round(total * 100),
         currency: "usd",
         customer: customer.id,
-        payment_method: defaultPaymentMethod.id,
+        payment_method: paymentMethodId,
         off_session: true,
         confirm: true,
-        application_fee_amount,
-        transfer_data: {
-          destination: stripeAccountId,
+        shipping: {
+          name: user.fullName || "Customer",
+          address: {
+            line1: user.shippingAddress.line1,
+            city: user.shippingAddress.city,
+            state: user.shippingAddress.state,
+            postal_code: user.shippingAddress.postalCode,
+            country: user.shippingAddress.country || "US",
+          },
         },
         metadata: {
-          basePrice: basePrice.toFixed(2),
-          shippingRate: shippingRate.toFixed(2),
-          taxAmount: taxAmount.toFixed(2),
-          totalPrice: ((basePrice + shippingRate + taxAmount).toFixed(2)),
-          productId: productId,
+          buyerId: uid,
+          stream: channel,
         },
+      });
+
+      const timestamp = require("firebase-admin").firestore.FieldValue.serverTimestamp();
+
+      for (const item of lineItems) {
+        await db.collection("users").doc(uid).collection("purchases").add({
+          productId: item.productId,
+          title: item.title,
+          quantity: item.quantity,
+          price: item.price,
+          shipping: item.shipping,
+          subtotal: item.subtotal,
+          channel,
+          purchasedAt: timestamp,
+        });
+
+        await db.collection("orders").add({
+          buyerId: uid,
+          buyerEmail: user.email,
+          productId: item.productId,
+          title: item.title,
+          quantity: item.quantity,
+          price: item.price,
+          shipping: item.shipping,
+          subtotal: item.subtotal,
+          streamTitle: "", // optional if you want to include
+          fulfilled: false,
+          channel,
+          shippingAddress: user.shippingAddress,
+          purchasedAt: timestamp,
+        });
+      }
+
+      await cartRef.delete();
+
+      res.status(200).json({ success: true, paymentIntentId: paymentIntent.id });
+    } catch (err) {
+      console.error("🔥 createCartPaymentIntent error:", err.message);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+});
+
+
+exports.createProductPaymentIntent = onRequest({
+  secrets: [STRIPE_SECRET_KEY],
+}, async (req, res) => {
+  cors(req, res, async () => {
+    try {
+      const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
+      const { productId, uid, quantity } = req.body;
+      const qty = quantity ? parseInt(quantity, 10) : 1;
+
+      if (!productId || !uid) {
+        return res.status(400).json({ success: false, error: "Missing productId or uid" });
+      }
+
+      // Fetch product
+      const productRef = db.collection("products").doc(productId);
+      const productSnap = await productRef.get();
+      if (!productSnap.exists) {
+        return res.status(404).json({ success: false, error: "Product not found" });
+      }
+      const product = productSnap.data();
+
+      // Use bulk pricing if applicable
+      const bulkQtyThreshold = product.bulkQuantity || Infinity;
+      const unitPrice = qty >= bulkQtyThreshold ? product.bulkPrice : product.fullPrice;
+      if (typeof unitPrice !== "number" || isNaN(unitPrice)) {
+        return res.status(400).json({ success: false, error: "Invalid product price" });
+      }
+
+      const subtotal = unitPrice * qty;
+      const shipping = product.shippingRate || 0;
+      const total = subtotal + shipping;
+
+      // Fetch user
+      const userRef = db.collection("users").doc(uid);
+      const userSnap = await userRef.get();
+      if (!userSnap.exists) {
+        return res.status(404).json({ success: false, error: "User not found" });
+      }
+      const userData = userSnap.data();
+
+      if (!userData?.hasSavedPaymentMethod || !userData?.shippingAddress) {
+        return res.status(400).json({ success: false, error: "Missing payment or shipping info" });
+      }
+
+      const customerId = userData.stripeCustomerId;
+      if (!customerId) {
+        return res.status(400).json({ success: false, error: "Stripe customer ID missing" });
+      }
+
+      const customer = await stripe.customers.retrieve(customerId);
+      const defaultPaymentMethodId = customer.invoice_settings.default_payment_method;
+      if (!defaultPaymentMethodId) {
+        return res.status(400).json({ success: false, error: "No saved card on file" });
+      }
+
+      const paymentMethod = await stripe.paymentMethods.retrieve(defaultPaymentMethodId);
+      const sellerStripeAccountId = product.stripeAccountId;
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(total * 100),
+        currency: "usd",
+        customer: customer.id,
+        payment_method: paymentMethod.id,
+        off_session: true,
+        confirm: true,
+        shipping: {
+          name: userData.fullName || "Customer",
+          address: {
+            line1: userData.shippingAddress.line1,
+            city: userData.shippingAddress.city,
+            state: userData.shippingAddress.state,
+            postal_code: userData.shippingAddress.postalCode,
+            country: userData.shippingAddress.country || "US",
+          },
+        },
+        ...(sellerStripeAccountId && {
+          transfer_data: { destination: sellerStripeAccountId }
+        }),
+        metadata: {
+          buyerId: uid,
+          productId,
+          quantity: qty.toString(),
+          unitPrice: unitPrice.toFixed(2),
+          subtotal: subtotal.toFixed(2),
+          shipping: shipping.toFixed(2),
+        },
+      });
+
+      const purchaseData = {
+        productId,
+        product,
+        quantity: qty,
+        total,
+        purchasedAt: require("firebase-admin").firestore.FieldValue.serverTimestamp(),
+        shippingAddress: userData.shippingAddress,
+        paymentIntentId: paymentIntent.id,
+      };
+
+      await db.collection("users").doc(uid).collection("purchases").add(purchaseData);
+
+      await db.collection("orders").add({
+        buyerId: uid,
+        items: [{ ...product, productId, quantity: qty }],
+        total,
+        purchasedAt: require("firebase-admin").firestore.FieldValue.serverTimestamp(),
+        shippingAddress: userData.shippingAddress,
+        paymentIntentId: paymentIntent.id,
       });
 
       res.status(200).json({ success: true, paymentIntentId: paymentIntent.id });
     } catch (err) {
-      console.error("❌ createPaymentIntent error:", err.message);
-      res.status(500).json({ error: err.message });
+      console.error("❌ createProductPaymentIntent error:", err.message);
+      res.status(500).json({ success: false, error: err.message });
     }
   });
 });
+
 
 // ✅ Check Stripe Verified
 exports.checkStripeVerified = onRequest({
@@ -385,9 +486,15 @@ exports.generateAgoraToken = onRequest({
 });
 
 // ✅ Order Notification
-exports.sendOrderNotification = require("firebase-functions").firestore
-  .document("orders/{orderId}")
-  .onCreate(async (snap, context) => {
+exports.sendOrderNotification = onDocumentCreated(
+  {
+    region: "us-central1", // ✅ matches old function
+    memory: "256Mi",
+    timeoutSeconds: 60,
+  },
+  "orders/{orderId}",
+  async (event) => {
+    const snap = event.data;
     const order = snap.data();
     const buyerId = order.buyerId;
 
@@ -400,7 +507,8 @@ exports.sendOrderNotification = require("firebase-functions").firestore
     };
 
     await db.collection("users").doc(buyerId).collection("notifications").add(notification);
-  });
+  }
+);
 
   exports.createPaymentSheet = onRequest({
     secrets: [STRIPE_SECRET_KEY],
@@ -446,49 +554,62 @@ const setupIntent = await stripe.setupIntents.create({
     });
   });  
 
-exports.savePaymentMethodDetails = onRequest({
-  secrets: [STRIPE_SECRET_KEY],
-}, async (req, res) => {
-  try {
-    const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
-    const { setupIntentId, uid } = req.body;
-
-    if (!setupIntentId || !uid) {
-      return res.status(400).json({ error: "Missing setupIntentId or uid" });
-    }
-
-    // Get setup intent to find attached payment method
-    const setupIntent = await stripe.setupIntents.retrieve(setupIntentId);
-    const paymentMethodId = setupIntent.payment_method;
-
-    if (!paymentMethodId) {
-      return res.status(404).json({ error: "No payment method attached" });
-    }
-
-    // Retrieve the payment method details
-    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
-
-    const card = paymentMethod.card;
-    const name = paymentMethod.billing_details.name;
-
-    // Save to Firestore
-    const userRef = db.collection("users").doc(uid);
-    await userRef.set({
-      paymentMethod: {
-        card: {
-          brand: card.brand,
-          last4: card.last4,
+  exports.savePaymentMethodDetails = onRequest({
+    secrets: [STRIPE_SECRET_KEY],
+  }, async (req, res) => {
+    try {
+      const stripe = require("stripe")(STRIPE_SECRET_KEY.value());
+      const { setupIntentId, uid } = req.body;
+  
+      if (!setupIntentId || !uid) {
+        return res.status(400).json({ error: "Missing setupIntentId or uid" });
+      }
+  
+      // Retrieve setup intent and get the payment method ID
+      const setupIntent = await stripe.setupIntents.retrieve(setupIntentId);
+      const paymentMethodId = setupIntent.payment_method;
+      const customerId = setupIntent.customer;
+  
+      if (!paymentMethodId || !customerId) {
+        return res.status(404).json({ error: "No payment method or customer found" });
+      }
+  
+      // 🔒 Attach the payment method to the customer (if not already)
+      await stripe.paymentMethods.attach(paymentMethodId, {
+        customer: customerId,
+      });
+  
+      // 🔁 Set it as default for future payments
+      await stripe.customers.update(customerId, {
+        invoice_settings: {
+          default_payment_method: paymentMethodId,
         },
-        billingDetails: {
-          name,
+      });
+  
+      // Retrieve full payment method details
+      const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+      const card = paymentMethod.card;
+      const name = paymentMethod.billing_details.name;
+  
+      // 🔐 Save everything to Firestore including the Stripe customer ID
+      await db.collection("users").doc(uid).set({
+        stripeCustomerId: customerId,
+        paymentMethod: {
+          card: {
+            brand: card.brand,
+            last4: card.last4,
+          },
+          billingDetails: {
+            name,
+          },
         },
-      },
-    }, { merge: true });
-
-    res.status(200).json({ success: true });
-  } catch (err) {
-    console.error("❌ savePaymentMethodDetails error:", err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
+        hasSavedPaymentMethod: true,
+      }, { merge: true });
+  
+      res.status(200).json({ success: true });
+    } catch (err) {
+      console.error("❌ savePaymentMethodDetails error:", err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+  

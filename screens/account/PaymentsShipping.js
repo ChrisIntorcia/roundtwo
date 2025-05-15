@@ -16,7 +16,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view
 import { Ionicons } from "@expo/vector-icons";
 import { useStripe } from "@stripe/stripe-react-native";
 import { useNavigation } from "@react-navigation/native";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 import CustomHeader from "../../components/CustomHeader";
 import { AppContext } from "../../context/AppContext";
@@ -35,7 +35,7 @@ export default function PaymentsShippingScreen() {
     if (!user) return;
 
     const userRef = doc(db, "users", user.uid);
-    getDoc(userRef).then((docSnap) => {
+    const unsubscribe = onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
 
@@ -45,6 +45,8 @@ export default function PaymentsShippingScreen() {
         if (card && card.last4 && card.brand) {
           const lastName = name?.split(" ").slice(-1)[0] || "";
           setPaymentSummary(`•••• ${card.last4} ${card.brand.toUpperCase()}`);
+        } else {
+          setPaymentSummary(null);
         }
 
         const addr = data?.shippingAddress;
@@ -52,9 +54,13 @@ export default function PaymentsShippingScreen() {
           setShippingSummary(
             `${addr.street}, ${addr.city}, ${addr.state} ${addr.zip}`
           );
+        } else {
+          setShippingSummary(null);
         }
       }
     });
+
+    return () => unsubscribe();
   }, [user]);
 
   const animatePress = () => {
@@ -74,7 +80,7 @@ export default function PaymentsShippingScreen() {
 
   const openPaymentSheet = async () => {
     if (!user || isProcessingPayment) return;
-    
+  
     animatePress();
     setIsProcessingPayment(true);
   
@@ -92,45 +98,48 @@ export default function PaymentsShippingScreen() {
         throw new Error("Failed to create Payment Sheet");
       }
   
-      const { setupIntentClientSecret, ephemeralKey, customer } = await response.json();
+      const {
+        setupIntentClientSecret,
+        ephemeralKey,
+        customer
+      } = await response.json();
   
       const { error: initError } = await initPaymentSheet({
         customerId: customer,
         customerEphemeralKeySecret: ephemeralKey,
-        setupIntentClientSecret: setupIntentClientSecret,
+        setupIntentClientSecret,
         merchantDisplayName: "Roundtwo",
         returnURL: "roundtwo://payment-complete",
       });
   
-      if (initError) {
-        throw new Error(initError.message);
-      }
+      if (initError) throw new Error(initError.message);
   
       const { error: sheetError } = await presentPaymentSheet();
-  
-      if (sheetError) {
-        if (sheetError.code === "Canceled") {
-          return;
-        }
+      if (sheetError && sheetError.code !== "Canceled") {
         throw new Error(sheetError.message);
       }
   
-      const userRef = doc(db, "users", user.uid);
-      await setDoc(userRef, { hasSavedPaymentMethod: true }, { merge: true });
+      // ✅ Extract the setupIntentId from the client secret
+      const setupIntentId = setupIntentClientSecret.split("_secret_")[0];
   
-      setPaymentSummary("**** CARD SAVED");
+      // ✅ Save payment method details to Firestore via Cloud Function
+      await fetch("https://us-central1-roundtwo-cc793.cloudfunctions.net/savePaymentMethodDetails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid: user.uid, setupIntentId }),
+      });
+  
+      setPaymentSummary("•••• CARD SAVED");
       Alert.alert("Success", "Payment method added successfully!", [{ text: "OK" }]);
     } catch (err) {
       console.error("Payment Setup Error:", err.message);
-      Alert.alert(
-        "Error",
-        err.message || "Something went wrong during payment setup.",
-        [{ text: "Try Again" }]
-      );
+      Alert.alert("Error", err.message || "Something went wrong during payment setup.", [
+        { text: "Try Again" },
+      ]);
     } finally {
       setIsProcessingPayment(false);
     }
-  };
+  };  
 
   const openShippingSheet = () => {
     animatePress();

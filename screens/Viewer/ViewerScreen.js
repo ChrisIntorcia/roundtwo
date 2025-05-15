@@ -89,6 +89,83 @@ export default function ViewerScreen({ route, navigation }) {
   const [productPanelHeight, setProductPanelHeight] = useState(200); // fallback default
   const [showQuantityModal, setShowQuantityModal] = useState(false);
 
+  const { addToCart, handleBuy } = usePurchase({ db, selectedProduct, channel, setShowConfetti, setPurchaseBanner });
+
+  // Add this function to process cart transactions
+  const processPendingTransactions = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      // Get the user's cart
+      const cartRef = doc(db, 'livestreamCarts', channel, 'users', user.uid);
+      const cartSnap = await getDoc(cartRef);
+
+      if (cartSnap.exists() && cartSnap.data().items?.length > 0) {
+        const cart = cartSnap.data();
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const shipping = userDoc.data()?.shippingAddress;
+        const hasCard = userDoc.data()?.hasSavedPaymentMethod;
+
+        if (!shipping || !hasCard) {
+          Alert.alert(
+            'Missing Info',
+            'Unable to process your order. Please set up payment and shipping info.',
+            [{ text: 'OK', onPress: () => navigation.replace('MainApp', { screen: 'Home' }) }]
+          );
+          return;
+        }
+
+        // Calculate total amount for all items
+        const totalAmount = cart.items.reduce((sum, item) => {
+          return sum + (item.price + item.shippingRate) * item.quantity;
+        }, 0);
+
+        // Create a single payment intent for all items
+        const res = await fetch(
+          'https://us-central1-roundtwo-cc793.cloudfunctions.net/createCartPaymentIntent',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: user.uid,
+              channel: channel,
+            }),
+          }
+        );
+
+        let data;
+        let rawText;
+
+        try {
+          rawText = await res.text(); // read once
+          data = JSON.parse(rawText); // attempt to parse it
+        } catch (e) {
+          throw new Error(`Non-JSON response: ${rawText}`);
+        }
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Payment failed');
+        }
+
+        // Delete the cart after successful processing
+        await deleteDoc(cartRef);
+
+        Alert.alert(
+          "Order Processed",
+          "Your purchases have been processed successfully!",
+          [{ text: "OK", onPress: () => navigation.replace('MainApp', { screen: 'Home' }) }]
+        );
+      }
+    } catch (err) {
+      console.error('Error processing transactions:', err);
+      Alert.alert(
+        "Error",
+        "There was an error processing your purchases. Please contact support.",
+        [{ text: "OK", onPress: () => navigation.replace('MainApp', { screen: 'Home' }) }]
+      );
+    }
+  };
 
   useEffect(() => {
     const checkUserSetup = async () => {
@@ -253,10 +330,9 @@ export default function ViewerScreen({ route, navigation }) {
   useEffect(() => {
     const unsubProduct = onSnapshot(doc(db, 'livestreams', channel), (docSnap) => {
       if (docSnap.exists()) {
-        const data = docSnap.data(); // ✅ Fix: define data before using
+        const data = docSnap.data();
         setSelectedProduct(data.selectedProduct || null);
   
-        // 🔁 Watch global product for updates
         if (data.selectedProduct?.id) {
           const globalProductRef = doc(db, 'products', data.selectedProduct.id);
           onSnapshot(globalProductRef, (productSnap) => {
@@ -264,20 +340,14 @@ export default function ViewerScreen({ route, navigation }) {
             if (freshData) {
               setSelectedProduct({ id: productSnap.id, ...freshData });
             }
-          });          
+          });
         }
   
-        // ⏱ Update countdown
         if (typeof data.carouselCountdown === 'number') {
-          setCountdownSeconds(data.carouselCountdown); // allow 0/null to clear the countdown
+          setCountdownSeconds(data.carouselCountdown);
         }
   
-        // 🔴 Stream ended — boot viewer
-        if (data.isLive === false) {
-          Alert.alert("Stream Ended", "This stream has ended.", [
-            { text: "OK", onPress: () => navigation.replace('MainApp', { screen: 'Home' }) }
-          ]);
-        }        
+        // ❌ Removed auto-purchase trigger on stream end
       }
     });
   
@@ -293,11 +363,17 @@ export default function ViewerScreen({ route, navigation }) {
     });
   
     return () => {
+      // 🧹 Cleanup without triggering purchases
       unsubProduct();
       unsubChat();
       unsubViewers();
+  
+      rtcEngineRef.current?.leaveChannel();
+      rtcEngineRef.current?.release();
+  
+      deleteDoc(doc(db, 'livestreams', channel, 'viewers', auth.currentUser.uid)).catch(() => {});
     };
-  }, [channel]);
+  }, [channel]);  
   
   useEffect(() => {
     const checkFollowing = async () => {
@@ -376,17 +452,7 @@ export default function ViewerScreen({ route, navigation }) {
       Alert.alert('Error', 'Failed to send message. Please try again.');
     }
   };  
-
-  const { handleBuy, isPurchasing } = usePurchase({
-    db,
-    selectedProduct,
-    channel,
-    setShowConfetti,
-    setPurchaseBanner
-  });  
   
-  const displayUid = remoteUid || broadcasterUidRef.current;
-
   const adjustQuantity = (amount) => {
     setPurchaseQty(prev => Math.max(1, prev + amount));
   };
@@ -400,10 +466,10 @@ export default function ViewerScreen({ route, navigation }) {
         backgroundColor="transparent"
         barStyle="light-content"
       />
-      {joined && displayUid ? (
+      {joined && remoteUid ? (
         <RtcSurfaceView
           style={{ flex: 1 }}
-          canvas={{ uid: displayUid, sourceType: VideoSourceType.VideoSourceRemote }}
+          canvas={{ uid: remoteUid, sourceType: VideoSourceType.VideoSourceRemote }}
         />
       ) : (
         <View style={styles.waitingContainer}>
@@ -494,13 +560,13 @@ export default function ViewerScreen({ route, navigation }) {
           <TouchableOpacity 
             style={[
               styles.buyButton,
-              (!selectedProduct || isPurchasing) && styles.buyButtonDisabled
+              (!selectedProduct) && styles.buyButtonDisabled
             ]}
-            onPress={handleBuy}
-            disabled={!selectedProduct || isPurchasing}
+            onPress={() => handleBuy(purchaseQty)}
+            disabled={!selectedProduct}
           >
             <Text style={styles.buyButtonText}>
-              {isPurchasing ? 'Processing...' : selectedProduct ? `Buy Now (${purchaseQty})` : 'No Product Selected'}
+              {selectedProduct ? `Buy Now (${purchaseQty})` : 'No Product Selected'}
             </Text>
           </TouchableOpacity>
         </View>

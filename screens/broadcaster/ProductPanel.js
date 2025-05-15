@@ -5,18 +5,18 @@ import { BlurView } from 'expo-blur';
 import styles from './broadcasterStyles';
 
 const ProductPanel = ({ selectedProduct, countdownSeconds, onOpenQueue, onLayout }) => {
-  const flashAnim = React.useRef(new Animated.Value(1)).current;
+  const timerFlashAnim = React.useRef(new Animated.Value(1)).current;
 
   React.useEffect(() => {
     if (countdownSeconds && countdownSeconds <= 5) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(flashAnim, {
+          Animated.timing(timerFlashAnim, {
             toValue: 0.3,
             duration: 500,
             useNativeDriver: true,
           }),
-          Animated.timing(flashAnim, {
+          Animated.timing(timerFlashAnim, {
             toValue: 1,
             duration: 500,
             useNativeDriver: true,
@@ -24,7 +24,7 @@ const ProductPanel = ({ selectedProduct, countdownSeconds, onOpenQueue, onLayout
         ])
       ).start();
     } else {
-      flashAnim.setValue(1);
+      timerFlashAnim.setValue(1);
     }
   }, [countdownSeconds]);
 
@@ -66,7 +66,7 @@ const ProductPanel = ({ selectedProduct, countdownSeconds, onOpenQueue, onLayout
                 style={[
                   styles.timerBox, 
                   countdownSeconds <= 5 && {
-                    opacity: flashAnim,
+                    opacity: timerFlashAnim,
                     backgroundColor: '#ff4444'
                   }
                 ]}

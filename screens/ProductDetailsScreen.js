@@ -86,19 +86,18 @@ const ProductDetailsScreen = ({ route }) => {
 
     try {
       const response = await fetch(
-        'https://us-central1-roundtwo-cc793.cloudfunctions.net/createPaymentIntent',
+        'https://us-central1-roundtwo-cc793.cloudfunctions.net/createProductPaymentIntent',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            uid: user.uid,
             productId: product.id,
-            buyerEmail: user.email,
-            stripeAccountId: product.stripeAccountId,
-            application_fee_amount: Math.round(totalPrice * 100 * 0.1), // 10% fee
-            amount: Math.round(totalPrice * 100), // Convert to cents
+            quantity: quantity,
           }),
         }
       );
+      
 
       const data = await response.json();
       
