@@ -104,6 +104,8 @@ export default function usePurchase({ db, selectedProduct, channel, setShowConfe
   };
 
   const handleBuy = async (purchaseQty = 1) => {
+    if (isPurchasing) return;
+      setIsPurchasing(true);
     const user = auth.currentUser;
     if (!user || !selectedProduct || !channel) {
       console.error('❌ handleBuy: Missing user, product, or channel', {
@@ -116,7 +118,6 @@ export default function usePurchase({ db, selectedProduct, channel, setShowConfe
     }
 
     try {
-      setIsPurchasing(true);
       setPurchaseBanner('Processing purchase...');
       console.log('🔄 handleBuy: Starting purchase process', {
         userId: user.uid,

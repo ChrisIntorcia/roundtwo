@@ -10,8 +10,8 @@ import {
   Alert
 } from 'react-native';
 import { getFirestore, collection, query, where, orderBy, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
-import { auth } from '../firebaseConfig';
-import CustomHeader from '../components/CustomHeader';
+import { auth } from '../../firebaseConfig';
+import CustomHeader from '../../components/CustomHeader';
 import { Swipeable } from 'react-native-gesture-handler';
 import { MaterialIcons } from '@expo/vector-icons';
 
@@ -28,9 +28,11 @@ const ScheduledStreams = ({ navigation }) => {
     }
 
     console.log('Fetching streams for user:', user.uid);
+    const now = new Date();
     const q = query(
       collection(db, 'scheduledStreams'),
       where('userId', '==', user.uid),
+      where('date', '>=', now),
       orderBy('date', 'asc')
     );
 

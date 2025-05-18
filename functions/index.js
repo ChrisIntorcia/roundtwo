@@ -612,4 +612,52 @@ const setupIntent = await stripe.setupIntents.create({
       res.status(500).json({ error: err.message });
     }
   });
+  exports.createWebCartPaymentIntent = onRequest({ secrets: ["STRIPE_SECRET_KEY"] }, async (req, res) => {
+    cors(req, res, async () => {
+      try {
+        const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY || STRIPE_SECRET_KEY.value());
+        const { cartItems, couponCode } = req.body;
+  
+        if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
+          return res.status(400).json({ error: "Cart is empty" });
+        }
+  
+        let total = 0;
+        for (const item of cartItems) {
+          total += item.price * item.quantity;
+        }
+  
+        let discount = 0;
+        if (couponCode) {
+          try {
+            const coupon = await stripe.coupons.retrieve(couponCode);
+            if (coupon.valid && coupon.percent_off) {
+              discount = total * (coupon.percent_off / 100);
+            }
+          } catch (err) {
+            console.warn("Invalid coupon:", couponCode);
+          }
+        }
+  
+        const amount = Math.max(0, Math.round((total - discount) * 100));
+  
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount,
+          currency: "usd",
+          automatic_payment_methods: { enabled: true },
+          setup_future_usage: null,
+          metadata: {
+            orderType: "web_cart",
+            items: JSON.stringify(cartItems),
+            couponCode: couponCode || "",
+          },
+        });
+  
+        res.status(200).json({ clientSecret: paymentIntent.client_secret });
+      } catch (err) {
+        console.error("🔥 createWebCartPaymentIntent error:", err.message);
+        res.status(500).json({ error: err.message });
+      }
+    });
+  });
   

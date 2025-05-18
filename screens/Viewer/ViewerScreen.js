@@ -89,7 +89,7 @@ export default function ViewerScreen({ route, navigation }) {
   const [productPanelHeight, setProductPanelHeight] = useState(200); // fallback default
   const [showQuantityModal, setShowQuantityModal] = useState(false);
 
-  const { addToCart, handleBuy } = usePurchase({ db, selectedProduct, channel, setShowConfetti, setPurchaseBanner });
+  const { addToCart, handleBuy, isPurchasing } = usePurchase({ db, selectedProduct, channel, setShowConfetti, setPurchaseBanner });
 
   // Add this function to process cart transactions
   const processPendingTransactions = async () => {
@@ -557,13 +557,13 @@ export default function ViewerScreen({ route, navigation }) {
         )}
 
         <View style={[styles.bottomBar, { bottom: 70 }]}>
-          <TouchableOpacity 
+         <TouchableOpacity 
             style={[
               styles.buyButton,
-              (!selectedProduct) && styles.buyButtonDisabled
+              (!selectedProduct || isPurchasing) && styles.buyButtonDisabled
             ]}
             onPress={() => handleBuy(purchaseQty)}
-            disabled={!selectedProduct}
+            disabled={!selectedProduct || isPurchasing}
           >
             <Text style={styles.buyButtonText}>
               {selectedProduct ? `Buy Now (${purchaseQty})` : 'No Product Selected'}

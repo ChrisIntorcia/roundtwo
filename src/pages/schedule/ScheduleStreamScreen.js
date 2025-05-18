@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// screens/ScheduleStreamScreen.js
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,8 +8,7 @@ import {
   Platform,
   Image,
   TextInput,
-  Alert,
-  ActivityIndicator
+  Alert
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import CustomHeader from '../components/CustomHeader';
@@ -16,56 +16,31 @@ import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import {
   getFirestore,
-  doc,
-  getDoc,
-  updateDoc,
+  collection,
+  addDoc,
+  serverTimestamp,
   Timestamp
 } from 'firebase/firestore';
 import {
   getStorage,
   ref as storageRef,
   uploadBytes,
-  getDownloadURL,
-  deleteObject
+  getDownloadURL
 } from 'firebase/storage';
 import { auth } from '../firebaseConfig';
 
 const db = getFirestore();
 const storage = getStorage();
 
-const EditScheduledStream = ({ route, navigation }) => {
-  const { streamId } = route.params;
+const ScheduleStreamScreen = ({ navigation }) => {
   const [streamTitle, setStreamTitle] = useState('');
   const [date, setDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
   const [thumbnailLocalUri, setThumbnailLocalUri] = useState(null);
-  const [originalThumbnailUrl, setOriginalThumbnailUrl] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchStreamData();
-  }, []);
-
-  const fetchStreamData = async () => {
-    try {
-      const streamDoc = await getDoc(doc(db, 'scheduledStreams', streamId));
-      if (streamDoc.exists()) {
-        const data = streamDoc.data();
-        setStreamTitle(data.title);
-        setDate(data.date.toDate());
-        if (data.coverImage) {
-          setThumbnailLocalUri(data.coverImage);
-          setOriginalThumbnailUrl(data.coverImage);
-        }
-      }
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error fetching stream:', error);
-      Alert.alert('Error', 'Failed to load stream data');
-      navigation.goBack();
-    }
-  };
+  const canConfirm = streamTitle.trim().length > 0 && !!thumbnailLocalUri && !isSubmitting;
 
   const onChange = (_, selectedDate) => {
     setShowPicker(false);
@@ -102,69 +77,63 @@ const EditScheduledStream = ({ route, navigation }) => {
       quality: 0.7
     });
     setIsLoading(false);
+
     const uri = result.assets?.[0]?.uri ?? result.uri;
     if (uri) setThumbnailLocalUri(uri);
   };
 
-  const confirmEdit = async () => {
-    if (!streamTitle.trim()) {
-      Alert.alert('Error', 'Please enter a stream title');
-      return;
-    }
-
-    setIsSaving(true);
+  const confirmSchedule = async () => {
+    if (!canConfirm || isSubmitting) return;
+    setIsSubmitting(true);
     try {
-      let downloadURL = originalThumbnailUrl;
-
-      // If thumbnail was changed, upload the new one
-      if (thumbnailLocalUri && thumbnailLocalUri !== originalThumbnailUrl) {
+      const user = auth.currentUser;
+      if (!user) {
+        Alert.alert('Error', 'You must be logged in to schedule a stream');
+        return;
+      }
+  
+      // Fetch the user's username from Firestore
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      const username = userDocSnap.exists() ? userDocSnap.data().username || '' : '';
+  
+      let downloadURL = null;
+      if (thumbnailLocalUri) {
         const response = await fetch(thumbnailLocalUri);
         const blob = await response.blob();
         const fileRef = storageRef(storage, `thumbnails/${Date.now()}.jpg`);
         await uploadBytes(fileRef, blob);
         downloadURL = await getDownloadURL(fileRef);
-
-        // Delete old thumbnail if it exists
-        if (originalThumbnailUrl) {
-          try {
-            const oldRef = storageRef(storage, originalThumbnailUrl);
-            await deleteObject(oldRef);
-          } catch (error) {
-            console.error('Error deleting old thumbnail:', error);
-          }
-        }
       }
-
-      await updateDoc(doc(db, 'scheduledStreams', streamId), {
+  
+      const streamDate = Timestamp.fromDate(date);
+      console.log('Saving stream with date:', streamDate.toDate().toISOString());
+  
+      await addDoc(collection(db, 'scheduledStreams'), {
         title: streamTitle,
-        date: Timestamp.fromDate(date),
-        coverImage: downloadURL
+        date: streamDate,
+        coverImage: downloadURL,
+        createdAt: serverTimestamp(),
+        userId: user.uid,
+        username // ✅ Added here
       });
-
+  
       Alert.alert(
-        'Updated!',
-        'Stream has been updated successfully.',
+        'Scheduled!',
+        `"${streamTitle}" is set for ${formatDateTime(date)}.`,
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (e) {
-      console.error('Error updating stream:', e);
+      console.error('Error scheduling stream:', e);
       Alert.alert('Oops', 'Something went wrong. Please try again.');
     } finally {
-      setIsSaving(false);
+      setIsSubmitting(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#213E4D" />
-      </View>
-    );
-  }
-
   return (
     <View style={{ flex: 1, backgroundColor: '#F9F9F9' }}>
-      <CustomHeader title="Edit Stream" showBack />
+      <CustomHeader title="Schedule Your Show" showBack />
       <View style={styles.container}>
         <Text style={styles.sectionTitle}>Stream Title</Text>
         <TextInput
@@ -173,6 +142,7 @@ const EditScheduledStream = ({ route, navigation }) => {
           value={streamTitle}
           onChangeText={setStreamTitle}
         />
+
         <Text style={styles.sectionTitle}>Pick Date & Time</Text>
         <TouchableOpacity
           style={styles.calButton}
@@ -189,7 +159,8 @@ const EditScheduledStream = ({ route, navigation }) => {
             onChange={onChange}
           />
         )}
-        <Text style={styles.sectionTitle}>Stream Thumbnail</Text>
+
+        <Text style={styles.sectionTitle}>Schedule Thumbnail</Text>
         <TouchableOpacity
           style={[
             styles.thumbnailContainer,
@@ -218,16 +189,40 @@ const EditScheduledStream = ({ route, navigation }) => {
           )}
         </TouchableOpacity>
 
+        <Text style={styles.sectionTitle}>Product Queue</Text>
         <TouchableOpacity
-          style={[styles.button, styles.confirm]}
-          onPress={confirmEdit}
-          disabled={isSaving}
+          style={styles.productQueueButton}
+          onPress={() => navigation.navigate('ScheduleProductQueue')}
         >
-          {isSaving ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.buttonText}>Save Changes</Text>
-          )}
+          <MaterialIcons name="queue" size={24} color="#213E4D" />
+          <Text style={styles.productQueueText}>View Product Queue</Text>
+          <MaterialIcons name="chevron-right" size={24} color="#213E4D" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.button,
+            styles.confirm,
+            !canConfirm && styles.buttonDisabled
+          ]}
+          onPress={confirmSchedule}
+          disabled={!canConfirm || isSubmitting}
+        >
+          <Text style={styles.buttonText}>
+            {isSubmitting ? 'Scheduling...' : 'Confirm Schedule'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.liveContainer}>
+        <Text style={[styles.liveText, styles.noBottomMargin]}>
+          Want to go live Now?
+        </Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => navigation.navigate('PreStreamSetup')}
+        >
+          <Text style={styles.buttonText}>Go Live Now</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -245,11 +240,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   sectionTitle: {
     fontSize: 20,
@@ -327,11 +317,43 @@ const styles = StyleSheet.create({
   confirm: {
     backgroundColor: '#213E4D'
   },
+  buttonDisabled: {
+    opacity: 0.5
+  },
   buttonText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 16
+  },
+  liveContainer: {
+    padding: 20,
+    alignItems: 'center'
+  },
+  liveText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 5,
+    color: '#213E4D'
+  },
+  noBottomMargin: {
+    marginBottom: 5
+  },
+  productQueueButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F0F0F0',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 30,
+    marginBottom: 20
+  },
+  productQueueText: {
+    fontSize: 16,
+    color: '#213E4D',
+    flex: 1,
+    marginLeft: 10
   }
 });
 
-export default EditScheduledStream; 
+export default ScheduleStreamScreen;

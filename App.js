@@ -52,11 +52,14 @@ import TermsOfUseScreen from "./screens/account/TermsOfUseScreen";
 import PrivacyPolicyScreen from "./screens/account/PrivacyPolicyScreen";
 import MessagesScreen from "./screens/account/MessagesScreen";
 import InboxScreen from "./screens/account/InboxScreen";
-import ScheduleStreamScreen from "./screens/ScheduleStreamScreen";
-import ScheduledStreams from "./screens/ScheduledStreams";
-import EditScheduledStream from "./screens/EditScheduledStream";
-import EditProductScreen     from "./screens/sellerHub/EditProductScreen";
+import ScheduleStreamScreen from "./screens/schedule/ScheduleStreamScreen";
+import ScheduledStreams from "./screens/schedule/ScheduledStreams";
+import EditScheduledStream from "./screens/schedule/EditScheduledStream";
+import EditProductScreen from "./screens/sellerHub/EditProductScreen";
 import OrderDetailsScreen from "./screens/OrderDetailsScreen";
+import ScheduleProductQueue from './screens/schedule/ScheduleProductQueue';
+import EventDetails from "./screens/schedule/EventDetails";
+import BrowsePage from "./screens/spinner/BrowsePage";
 
 
 const linking = {
@@ -165,8 +168,18 @@ export default function App() {
               <Stack.Screen name="ScheduleStream" component={ScheduleStreamScreen} options={{ headerShown: false }} />
               <Stack.Screen name="ScheduledStreams" component={ScheduledStreams} options={{ headerShown: false }} />
               <Stack.Screen name="EditScheduledStream" component={EditScheduledStream} options={{ headerShown: false }} />
+              <Stack.Screen name="ScheduleProductQueue" component={ScheduleProductQueue} options={{ headerShown: false }} />
+              <Stack.Screen name="EventDetails" component={EventDetails} options={{ headerShown: false }} />
               <Stack.Screen name="EditProductScreen" component={EditProductScreen} options={{ headerShown: false }} />
               <Stack.Screen name="OrderDetailsScreen" component={OrderDetailsScreen} options={{ title: "Order Details" }} />
+              <Stack.Screen 
+                name="BrowsePage" 
+                component={BrowsePage} 
+                options={{ 
+                  headerShown: false,
+                  presentation: 'modal'
+                }} 
+              />
             </Stack.Navigator>
           </NavigationContainer>
         </AppProvider>

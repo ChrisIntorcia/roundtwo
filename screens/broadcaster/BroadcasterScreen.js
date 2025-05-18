@@ -104,17 +104,51 @@ export default function BroadcasterScreen({ route, navigation }) {
 
   const fetchProducts = () => {
     if (!auth.currentUser) return () => {};
-const userId = auth.currentUser.uid;
+    const userId = auth.currentUser.uid;
     if (!user) return () => {};
     
-    const q = query(collection(db, 'products'), where('sellerId', '==', userId));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setProducts(items);
-      setProductsLoaded(true);
+    // First get the livestream document to get selected products
+    const livestreamRef = doc(db, 'livestreams', channelName);
+    const unsubscribeLivestream = onSnapshot(livestreamRef, async (livestreamSnap) => {
+      if (livestreamSnap.exists()) {
+        const livestreamData = livestreamSnap.data();
+        
+        if (livestreamData.useAllInventory) {
+          // If using all inventory, fetch all products
+          const q = query(collection(db, 'products'), where('sellerId', '==', userId));
+          const snapshot = await getDocs(q);
+          const items = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          setProducts(items);
+        } else {
+          // If using selected products, fetch only those products in the correct order
+          const selectedProductIds = livestreamData.products || [];
+          if (selectedProductIds.length > 0) {
+            // Create a map of product IDs to their order
+            const orderMap = new Map(selectedProductIds.map((id, index) => [id, index]));
+            
+            const productsPromises = selectedProductIds.map(async (productId) => {
+              const productRef = doc(db, 'products', productId);
+              const productSnap = await getDoc(productRef);
+              if (productSnap.exists()) {
+                return { id: productSnap.id, ...productSnap.data() };
+              }
+              return null;
+            });
+            
+            const products = (await Promise.all(productsPromises))
+              .filter(Boolean)
+              .sort((a, b) => orderMap.get(a.id) - orderMap.get(b.id));
+            
+            setProducts(products);
+          } else {
+            setProducts([]);
+          }
+        }
+        setProductsLoaded(true);
+      }
     });
   
-    return unsubscribe;
+    return unsubscribeLivestream;
   };  
 
   useEffect(() => {
@@ -138,6 +172,33 @@ const userId = auth.currentUser.uid;
         setMessages(msgs);
       }
     );
+
+    // Initialize selected product when products are loaded
+    const unsubLivestream = onSnapshot(doc(db, 'livestreams', channelName), async (livestreamSnap) => {
+      if (livestreamSnap.exists()) {
+        const livestreamData = livestreamSnap.data();
+        if (livestreamData.selectedProductId && products.length > 0) {
+          const selectedProduct = products.find(p => p.id === livestreamData.selectedProductId);
+          if (selectedProduct) {
+            setSelectedProduct(selectedProduct);
+          } else if (products.length > 0) {
+            // If selected product not found but we have products, select the first one
+            setSelectedProduct(products[0]);
+            await updateDoc(doc(db, 'livestreams', channelName), {
+              selectedProductId: products[0].id,
+              selectedProduct: products[0],
+            });
+          }
+        } else if (products.length > 0) {
+          // If no product is selected but we have products, select the first one
+          setSelectedProduct(products[0]);
+          await updateDoc(doc(db, 'livestreams', channelName), {
+            selectedProductId: products[0].id,
+            selectedProduct: products[0],
+          });
+        }
+      }
+    });
 
     const renderFadingMessage = (messages) => ({ item, index }) => {
       const max = messages.length - 1;
@@ -171,6 +232,7 @@ const userId = auth.currentUser.uid;
       unsubMessages();
       unsubViewers();
       if (unsubPurchasesRef.current) unsubPurchasesRef.current(); // ✅ safe cleanup
+      unsubLivestream();
     };
     
   }, []);

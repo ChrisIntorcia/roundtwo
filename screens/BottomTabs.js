@@ -12,7 +12,7 @@ import {
   PanResponder,
 } from "react-native";
 import HomeScreen from "./homeScreen/HomeScreen";
-import BrowsePage from "../screens/spinner/BrowsePage";
+import BrowseScreen from "./BrowseScreen";
 import ActivityScreen from "./ActivityScreen";
 import AccountScreen from "./AccountScreen";
 import { AppContext } from "../context/AppContext";
@@ -106,15 +106,15 @@ const BottomTabs = ({ navigation }) => {
       >
         <Tab.Screen name="Home" component={HomeScreen} />
         <Tab.Screen
-  name="Prize"
-  component={BrowsePage}
-  options={{
-    tabBarLabel: 'Prize',
-    tabBarIcon: ({ color, size }) => (
-      <Ionicons name="gift" size={size} color={color} />
-    ),
-  }}
-/>
+          name="Browse"
+          component={BrowseScreen}
+          options={{
+            tabBarLabel: 'Browse',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="search" size={size} color={color} />
+            ),
+          }}
+        />
         {!sellerSetupComplete && (
           <Tab.Screen
             name="Sell"

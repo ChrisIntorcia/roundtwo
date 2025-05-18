@@ -103,9 +103,9 @@ const AccountScreen = () => {
   </Text>
 </TouchableOpacity>
 
-<TouchableOpacity style={styles.card} onPress={() => Alert.alert("Coming Soon", "This feature will be available in a future update.")}>
-  <Text style={styles.cardTitle}>My Rewards</Text>
-  <Text style={styles.cardSubtitle}>View Coupons</Text>
+<TouchableOpacity style={styles.card} onPress={() => navigation.navigate("BrowsePage")}>
+  <Text style={styles.cardTitle}>Prizes</Text>
+  <Text style={styles.cardSubtitle}>Spin to Win</Text>
 </TouchableOpacity>
             <TouchableOpacity
               style={styles.option}

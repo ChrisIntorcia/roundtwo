@@ -152,22 +152,35 @@ const ActivityScreen = ({ navigation }) => {
 
       for (const docSnap of chatsSnap.docs) {
         const data = docSnap.data();
+        if (!data || !data.users || !Array.isArray(data.users)) {
+          console.warn('Invalid chat data:', data);
+          continue;
+        }
         const otherId = data.users.find((uid) => uid !== currentUser.uid);
-        const userDoc = await getDoc(doc(db, "users", otherId));
-        const username = userDoc.data()?.username || "User";
+        if (!otherId) {
+          console.warn('Could not find other user in chat:', data);
+          continue;
+        }
+        try {
+          const userDoc = await getDoc(doc(db, "users", otherId));
+          const username = userDoc.data()?.username || "User";
 
-        activityItems.push({
-          type: "message",
-          timestamp: data.updatedAt?.toDate?.() || new Date(),
-          title: `New message from @${username}`,
-          subtitle: data.lastMessage || "New conversation",
-          image: userDoc.data()?.avatarUrl || null,
-          onPress: () =>
-            navigation.navigate("MessagesScreen", {
-              otherUserId: otherId,
-              otherUsername: username,
-            }),
-        });
+          activityItems.push({
+            type: "message",
+            timestamp: data.updatedAt?.toDate?.() || new Date(),
+            title: `New message from @${username}`,
+            subtitle: data.lastMessage || "New conversation",
+            image: userDoc.data()?.avatarUrl || null,
+            onPress: () =>
+              navigation.navigate("MessagesScreen", {
+                otherUserId: otherId,
+                otherUsername: username,
+              }),
+          });
+        } catch (error) {
+          console.error('Error processing chat:', error);
+          continue;
+        }
       }
 
       // Log all activity items for debugging

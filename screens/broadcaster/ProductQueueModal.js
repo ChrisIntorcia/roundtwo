@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -33,10 +33,19 @@ const ProductQueueModal = ({
   channelName,
   db,
 }) => {
+  // Maintain local state for products to handle reordering
+  const [localProducts, setLocalProducts] = useState(products);
+
+  // Update local products when props change
+  useEffect(() => {
+    setLocalProducts(products);
+  }, [products]);
+
   // Filter out products with no inventory
   useEffect(() => {
-    const productsWithInventory = products.filter(product => product.quantity > 0);
-    if (productsWithInventory.length !== products.length) {
+    const productsWithInventory = localProducts.filter(product => product.quantity > 0);
+    if (productsWithInventory.length !== localProducts.length) {
+      setLocalProducts(productsWithInventory);
       setProducts(productsWithInventory);
       // If the currently selected product has no inventory, select the first available product
       if (selectedProduct && selectedProduct.quantity === 0) {
@@ -49,7 +58,7 @@ const ProductQueueModal = ({
         });
       }
     }
-  }, [products]);
+  }, [localProducts]);
 
   const renderHeader = () => (
     <>
@@ -82,6 +91,7 @@ const ProductQueueModal = ({
             { val: 120, label: '2m' },
             { val: 180, label: '3m' },
             { val: 300, label: '5m' },
+            { val: 480, label: '8m' },
             { val: 600, label: '10m' },
             { val: 900, label: '15m' },
           ].map(({ val, label }, i) => (
@@ -155,7 +165,7 @@ const ProductQueueModal = ({
     <Modal visible={visible} transparent animationType="slide">
       <View style={[styles.modalOverlay, { justifyContent: 'flex-end' }]}>
         <SafeAreaView style={[styles.modalContent, { maxHeight: '80%', paddingBottom: 0 }]}>
-          {products.length === 0 ? (
+          {localProducts.length === 0 ? (
             <>
               {renderHeader()}
               <View style={styles.emptyQueue}>
@@ -169,14 +179,18 @@ const ProductQueueModal = ({
             </>
           ) : (
             <DraggableFlatList
-              data={products}
+              data={localProducts}
               keyExtractor={(item) => item.id}
               onDragEnd={({ data }) => {
+                setLocalProducts(data);
                 setProducts(data);
                 setSelectedProduct(data[0]);
+                // Update the order in Firestore
+                const productIds = data.map(item => item.id);
                 updateDoc(doc(db, 'livestreams', channelName), {
                   selectedProductId: data[0].id,
                   selectedProduct: data[0],
+                  products: productIds // Update the order of products
                 }).catch((err) => {
                   console.error('🔥 Failed to sync reordered product to Firestore:', err);
                 });

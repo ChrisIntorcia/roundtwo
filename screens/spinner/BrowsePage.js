@@ -6,6 +6,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Spinner from '../spinner/Spinner'; // ✅ confirmed path
 import { Modal, ScrollView } from 'react-native';
 import ShareButton from './Share';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 const MAX_SPINS_PER_DAY = 2;
 const getTodayDateKey = () => new Date().toLocaleDateString('en-CA'); // "YYYY-MM-DD" in Mountain Time
@@ -28,6 +30,7 @@ const PRIZES = [
 const { width, height } = Dimensions.get('window');
 
 export default function BrowsePage() {
+  const navigation = useNavigation();
   const [totalEntries, setTotalEntries] = useState(0);
   const [referralLink, setReferralLink] = useState('');
   const [availableSpins, setAvailableSpins] = useState(1);
@@ -183,6 +186,12 @@ export default function BrowsePage() {
       <View style={styles.overlay}>
         <View style={styles.container}>
           <View style={styles.headerContainer}>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#213E4D" />
+            </TouchableOpacity>
             <Text style={styles.header}>🎯 You have {totalEntries} entries</Text>
             <Text style={styles.spinsText}>🎲 {availableSpins} spin{availableSpins !== 1 ? 's' : ''} remaining today</Text>
             <View style={styles.referralSection}>
@@ -358,7 +367,7 @@ const styles = StyleSheet.create({
     bottom: 15,
     left: 20,
     right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: '#FFFFFF',
     padding: 20,
     borderRadius: 20,
     shadowColor: '#000',
@@ -454,5 +463,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  backButton: {
+    position: 'absolute',
+    left: 15,
+    top: 15,
+    zIndex: 1,
+    padding: 5,
   },
 });
