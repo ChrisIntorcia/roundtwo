@@ -1,11 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Image, Text, ActivityIndicator, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { auth } from '../../../firebaseConfig';
 import styles from '../viewerstyles'; // ✅ ensure correct path
 
-const ProductPanel = ({ selectedProduct, countdownSeconds, onOpenQueue }) => {
+const ProductPanel = ({ selectedProduct, countdownSeconds, onOpenQueue, channel }) => {
   const [imageLoading, setImageLoading] = useState(true);
   const [showPriceDetails, setShowPriceDetails] = useState(false);
+  const [streakCount, setStreakCount] = useState(0);
+  const [gamifiedDiscount, setGamifiedDiscount] = useState(false);
+
+  useEffect(() => {
+    const fetchDiscountData = async () => {
+      if (!selectedProduct || !channel) return;
+      try {
+        const db = getFirestore();
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const streamDoc = await getDoc(doc(db, 'livestreams', channel));
+        setGamifiedDiscount(streamDoc.data()?.gamifiedDiscount || false);
+
+        const streakDoc = await getDoc(doc(db, 'livestreams', channel, 'streaks', user.uid));
+        const count = streakDoc.exists() ? streakDoc.data().purchaseCount || 0 : 0;
+        setStreakCount(count);
+      } catch (err) {
+        console.warn('🔥 Error fetching discount/streak info:', err);
+      }
+    };
+
+    fetchDiscountData();
+  }, [selectedProduct, channel]);
 
   if (!selectedProduct) {
     return (
@@ -18,12 +44,12 @@ const ProductPanel = ({ selectedProduct, countdownSeconds, onOpenQueue }) => {
     );
   }
 
-  const discountPercentage = selectedProduct.fullPrice && selectedProduct.bulkPrice
-    ? Math.round(((selectedProduct.fullPrice - selectedProduct.bulkPrice) / selectedProduct.fullPrice) * 100)
-    : 0;
+  const fullPrice = Number(selectedProduct.fullPrice || 0);
+  const shippingPrice = Number(selectedProduct.shippingRate || 0);
 
-  const shippingPrice = selectedProduct.shippingRate || 0;
-  const totalPrice = (selectedProduct.bulkPrice || 0) + shippingPrice;
+  const discountPercentage = gamifiedDiscount ? Math.min((streakCount + 1) * 10, 50) : 0;
+  const discountedPrice = fullPrice * (1 - discountPercentage / 100);
+  const totalPrice = discountedPrice + shippingPrice;
 
   return (
     <View style={styles.productPanel}>
@@ -40,7 +66,7 @@ const ProductPanel = ({ selectedProduct, countdownSeconds, onOpenQueue }) => {
           onLoadEnd={() => setImageLoading(false)}
         />
       </View>
-      
+
       <View style={styles.productDetails}>
         <View style={styles.titleRow}>
           <Text style={styles.productTitle} numberOfLines={1}>
@@ -61,13 +87,13 @@ const ProductPanel = ({ selectedProduct, countdownSeconds, onOpenQueue }) => {
         )}
 
         <View style={styles.priceContainer}>
-          {selectedProduct.fullPrice && (
+          {fullPrice > 0 && (
             <Text style={styles.originalPrice}>
-              ${Number(selectedProduct.fullPrice).toFixed(2)}
+              ${fullPrice.toFixed(2)}
             </Text>
           )}
           <Text style={styles.productPrice}>
-            ${Number(selectedProduct.bulkPrice || 0).toFixed(2)}
+            ${discountedPrice.toFixed(2)}
           </Text>
           <Text style={styles.feesText}>+ Fees</Text>
           <TouchableOpacity onPress={() => setShowPriceDetails(true)}>
@@ -89,22 +115,16 @@ const ProductPanel = ({ selectedProduct, countdownSeconds, onOpenQueue }) => {
         >
           <View style={styles.priceDetailsModal}>
             <View style={styles.priceDetailRow}>
-              <Text style={styles.priceDetailLabel}>Bulk Price:</Text>
-              <Text style={styles.priceDetailValue}>
-                ${Number(selectedProduct.bulkPrice || 0).toFixed(2)}
-              </Text>
+              <Text style={styles.priceDetailLabel}>Discounted Price:</Text>
+              <Text style={styles.priceDetailValue}>${discountedPrice.toFixed(2)}</Text>
             </View>
             <View style={styles.priceDetailRow}>
               <Text style={styles.priceDetailLabel}>Shipping:</Text>
-              <Text style={styles.priceDetailValue}>
-                ${Number(shippingPrice).toFixed(2)}
-              </Text>
+              <Text style={styles.priceDetailValue}>${shippingPrice.toFixed(2)}</Text>
             </View>
             <View style={[styles.priceDetailRow, { marginTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 8 }]}>
               <Text style={styles.priceDetailLabel}>Total:</Text>
-              <Text style={styles.priceDetailValue}>
-                ${Number(totalPrice).toFixed(2)}
-              </Text>
+              <Text style={styles.priceDetailValue}>${totalPrice.toFixed(2)}</Text>
             </View>
           </View>
         </TouchableOpacity>

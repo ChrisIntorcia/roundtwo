@@ -20,7 +20,6 @@ const db = getFirestore();
 
 const BrowseScreen = () => {
   const [productItems, setProductItems] = useState([]);
-  const [etsyItems, setEtsyItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -56,32 +55,8 @@ const BrowseScreen = () => {
         }
       );
 
-      const etsyQuery = query(
-        collection(db, "etsy_candy"),
-        limit(50)
-      );
-      
-      const unsubscribeEtsy = onSnapshot(etsyQuery,
-        (snapshot) => {
-          const etsyList = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            type: 'etsy',
-            ...doc.data(),
-          }));
-          setEtsyItems(etsyList);
-          setLoading(false);
-          setIsRefreshing(false);
-        },
-        (error) => {
-          setError(error.message);
-          setLoading(false);
-          setIsRefreshing(false);
-        }
-      );
-
       return () => {
         unsubscribeProducts();
-        unsubscribeEtsy();
       };
     } catch (err) {
       setError(err.message);
@@ -100,17 +75,7 @@ const BrowseScreen = () => {
     fetchData();
   };
 
-  const normalizeItem = (item) => {
-    if (item.type === 'etsy') {
-      return {
-        ...item,
-        images: [item.imageUrl],
-        fullPrice: item.price,
-        groupPrice: item.price,
-      };
-    }
-    return item;
-  };
+  const normalizeItem = (item) => item;
 
   const filterByPrice = (item) => {
     const price = parseFloat(item.fullPrice || item.price || 0);
@@ -153,7 +118,7 @@ const BrowseScreen = () => {
     );
   }
 
-  const allItems = [...productItems, ...etsyItems];
+  const allItems = [...productItems];
 
   // Filtering logic
   const filteredItems = allItems

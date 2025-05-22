@@ -33,7 +33,9 @@ export function PreStreamForm({
   useAllInventory,
   toggleProductSelection,
   toggleUseAllInventory,
-  setSelectedProducts
+  setSelectedProducts,  
+  gamifiedDiscount, 
+  setGamifiedDiscount,
 }) {
   const renderDropdownItem = ({ item }) => (
     <TouchableOpacity
@@ -167,19 +169,35 @@ export function PreStreamForm({
       </View>
 
       <Text style={baseStyles.sectionTitle}>Product Queue</Text>
-      <View style={styles.productQueueContainer}>
+
+<View style={styles.productQueueContainer}>
+  {/* Existing toggle — keep this */}
+  <TouchableOpacity
+    style={styles.inventoryToggle}
+    onPress={toggleUseAllInventory}
+  >
+    <MaterialIcons
+      name={useAllInventory ? "check-box" : "check-box-outline-blank"}
+      size={24}
+      color="#666"
+    />
+    <Text style={styles.inventoryToggleText}>Use All Inventory</Text>
+        </TouchableOpacity>
+
+        {/* 🔥 New toggle — insert this below */}
         <TouchableOpacity
           style={styles.inventoryToggle}
-          onPress={toggleUseAllInventory}
+          onPress={() => setGamifiedDiscount(!gamifiedDiscount)}
         >
           <MaterialIcons
-            name={useAllInventory ? "check-box" : "check-box-outline-blank"}
+            name={gamifiedDiscount ? "check-box" : "check-box-outline-blank"}
             size={24}
             color="#666"
           />
-          <Text style={styles.inventoryToggleText}>Use All Inventory</Text>
+          <Text style={styles.inventoryToggleText}>Enable Gamified Discount Streak</Text>
         </TouchableOpacity>
       </View>
+
     </>
   );
 

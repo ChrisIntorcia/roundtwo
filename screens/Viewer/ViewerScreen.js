@@ -54,12 +54,19 @@ import BroadcasterHeader from './components/BroadcasterHeader';
 import BuyButton from './components/BuyButton';
 import ViewerOptionsModal from './components/ViewerOptionsModal';
 import { BlurView } from 'expo-blur';
-
+import StreakBar from './components/StreakBar';
+import PriceTag from './components/PriceTag';
+import QuantityModal from './components/QuantityModal';
+import ViewerControls from './components/ViewerControls';
+import StreamVideo from './components/StreamVideo';
+import { useKeepAwake } from 'expo-keep-awake';
+import { Keyboard, TouchableWithoutFeedback } from 'react-native';
 
 const APP_ID = '262ef45d2c514a5ebb129a836c4bff93';
 const TOKEN_SERVER_URL = 'https://us-central1-roundtwo-cc793.cloudfunctions.net/generateAgoraToken';
 
 export default function ViewerScreen({ route, navigation }) {
+  useKeepAwake(); 
   const { channel } = route.params;
   const [remoteUid, setRemoteUid] = useState(null);
   const [joined, setJoined] = useState(false);
@@ -460,139 +467,158 @@ export default function ViewerScreen({ route, navigation }) {
   if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: '#000' }} color="#E76A54" />;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
-      <StatusBar
-        translucent
-        backgroundColor="transparent"
-        barStyle="light-content"
-      />
-      {joined && remoteUid ? (
-        <RtcSurfaceView
-          style={{ flex: 1 }}
-          canvas={{ uid: remoteUid, sourceType: VideoSourceType.VideoSourceRemote }}
-        />
-      ) : (
-        <View style={styles.waitingContainer}>
-          <Text style={styles.waitingText}>Waiting for stream to start...</Text>
-        </View>
-      )}
-
-      <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
-      <BroadcasterHeader
-          broadcaster={broadcaster}
-          isFollowing={isFollowing}
-          toggleFollow={toggleFollow}
-          viewerCount={viewerCount}
-          navigation={navigation}
-        />
-
-
-        <View style={styles.sideToolbar}>
-          <TouchableOpacity onPress={() => setMoreOptionsVisible(true)}><Icon name="ellipsis-vertical" size={20} color="#fff" /></TouchableOpacity>
-          <TouchableOpacity onPress={handleShare}><Icon name="rocket" size={20} color="#fff" /></TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('PaymentsShipping')}><Icon name="wallet" size={20} color="#fff" /></TouchableOpacity>
-        </View>
-
-        <BlurView intensity={0} tint="dark" style={styles.bottomBlurOverlay} />
-
-        <ViewerChat      
-          db={db}
-          channel={channel}
-          messages={messages}
-          setMessages={setMessages}
-          chatInput={chatInput}
-          setChatInput={setChatInput}
-          flatListRef={flatListRef}
-          styles={styles}
-        />
-
-        <BlurView intensity={0} tint="dark" style={styles.productPanelBlur} />
-        <ProductPanel selectedProduct={selectedProduct} countdownSeconds={countdownSeconds} />
-
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.chatInputWrapper}
-        >
-          <TextInput
-            value={chatInput}
-            onChangeText={setChatInput}
-            placeholder="Say something..."
-            placeholderTextColor="#aaa"
-            style={styles.chatInput}
-            onSubmitEditing={sendMessage}
-            returnKeyType="send"
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <StatusBar
+            translucent
+            backgroundColor="transparent"
+            barStyle="light-content"
           />
-          <TouchableOpacity onPress={sendMessage}>
-            <Text style={styles.sendButton}>Send</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.optionsButton}
-            onPress={() => setShowQuantityModal(!showQuantityModal)}
-          >
-            <Icon name="options-outline" size={20} color="#E76A54" />
-          </TouchableOpacity>
-        </KeyboardAvoidingView>
-
-        {showQuantityModal && (
-          <View style={styles.quantityModal}>
-            <View style={styles.quantityRow}>
-              <Text style={styles.quantityLabel}>Quantity:</Text>
-              <View style={styles.quantityControls}>
-                <TouchableOpacity 
-                  style={styles.qtyButton}
-                  onPress={() => adjustQuantity(-1)}
-                >
-                  <Text style={styles.qtyButtonText}>-</Text>
-                </TouchableOpacity>
-                <Text style={styles.qtyText}>{purchaseQty}</Text>
-                <TouchableOpacity 
-                  style={styles.qtyButton}
-                  onPress={() => adjustQuantity(1)}
-                >
-                  <Text style={styles.qtyButtonText}>+</Text>
-                </TouchableOpacity>
-              </View>
+    
+          <StreamVideo joined={joined} remoteUid={remoteUid} />
+    
+          <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
+            <BroadcasterHeader
+              broadcaster={broadcaster}
+              isFollowing={isFollowing}
+              toggleFollow={toggleFollow}
+              viewerCount={viewerCount}
+              navigation={navigation}
+            />
+    
+            <StreakBar channel={channel} />
+            <PriceTag channel={channel} />
+    
+            <ViewerControls 
+              setMoreOptionsVisible={setMoreOptionsVisible}
+              handleShare={handleShare}
+              navigation={navigation}
+            />
+    
+            <BlurView intensity={0} tint="dark" style={styles.bottomBlurOverlay} />
+            <BlurView intensity={0} tint="dark" style={styles.productPanelBlur} />
+    
+            <ProductPanel
+              selectedProduct={selectedProduct}
+              countdownSeconds={countdownSeconds}
+              channel={channel}
+            />
+    
+            <QuantityModal
+              purchaseQty={purchaseQty}
+              adjustQuantity={adjustQuantity}
+              showQuantityModal={showQuantityModal}
+            />
+    
+            {/* Buy button */}
+            <View style={[styles.bottomBar, { bottom: 70 }]}>
+              <TouchableOpacity 
+                style={[
+                  styles.buyButton,
+                  (!selectedProduct || isPurchasing) && styles.buyButtonDisabled
+                ]}
+                onPress={() => handleBuy(purchaseQty)}
+                disabled={!selectedProduct || isPurchasing}
+              >
+                <Text style={styles.buyButtonText}>
+                  {selectedProduct ? `Buy Now (${purchaseQty})` : 'No Product Selected'}
+                </Text>
+              </TouchableOpacity>
             </View>
-          </View>
-        )}
-
-        <View style={[styles.bottomBar, { bottom: 70 }]}>
-         <TouchableOpacity 
-            style={[
-              styles.buyButton,
-              (!selectedProduct || isPurchasing) && styles.buyButtonDisabled
-            ]}
-            onPress={() => handleBuy(purchaseQty)}
-            disabled={!selectedProduct || isPurchasing}
-          >
-            <Text style={styles.buyButtonText}>
-              {selectedProduct ? `Buy Now (${purchaseQty})` : 'No Product Selected'}
-            </Text>
-          </TouchableOpacity>
+    
+            {/* Chat overlay messages */}
+            <ViewerChat
+              db={db}
+              channel={channel}
+              messages={messages}
+              setMessages={setMessages}
+              chatInput={chatInput}
+              setChatInput={setChatInput}
+              flatListRef={flatListRef}
+              styles={styles}
+            />
+    
+            {/* Blackout filler below chat input bar */}
+            <View
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 18,
+                backgroundColor: '#000',
+                zIndex: 998,
+              }}
+            />
+    
+            {/* Chat input + quantity toggle */}
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              style={{
+                position: 'absolute',
+                bottom: 18,
+                left: 0,
+                right: 0,
+                backgroundColor: '#000',
+                paddingBottom: insets.bottom,
+                paddingTop: 10,
+                paddingHorizontal: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                zIndex: 999,
+              }}
+            >
+              <TextInput
+                value={chatInput}
+                onChangeText={setChatInput}
+                placeholder="Say something..."
+                placeholderTextColor="#aaa"
+                style={{
+                  flex: 1,
+                  padding: 10,
+                  backgroundColor: '#111',
+                  color: '#fff',
+                  borderRadius: 8,
+                }}
+                onSubmitEditing={() => {
+                  sendMessage();
+                  Keyboard.dismiss(); // optional: dismiss after sending
+                }}
+                returnKeyType="send"
+              />
+    
+              <TouchableOpacity onPress={sendMessage} style={{ marginLeft: 8 }}>
+                <Text style={{ color: '#E76A54', fontWeight: '600' }}>Send</Text>
+              </TouchableOpacity>
+    
+              <TouchableOpacity 
+                style={{ marginLeft: 10 }}
+                onPress={() => setShowQuantityModal(!showQuantityModal)}
+              >
+                <Icon name="options-outline" size={20} color="#E76A54" />
+              </TouchableOpacity>
+            </KeyboardAvoidingView>
+    
+            <PurchaseCelebration
+              showConfetti={showConfetti}
+              purchaseBanner={purchaseBanner}
+              clearBanner={() => {
+                setShowConfetti(false);
+                setPurchaseBanner(null);
+              }}
+            />
+    
+            <View style={{ height: insets.bottom }} />
+          </Animated.View>
+    
+          <ViewerOptionsModal
+            visible={moreOptionsVisible}
+            setVisible={setMoreOptionsVisible}
+            muted={muted}
+            setMuted={setMuted}
+            rtcEngineRef={rtcEngineRef}
+          />
         </View>
-
-        <PurchaseCelebration
-  showConfetti={showConfetti}
-  purchaseBanner={purchaseBanner}
-  clearBanner={() => {
-    setShowConfetti(false);
-    setPurchaseBanner(null);
-  }}
-/>
-
-        <View style={{ height: insets.bottom}} />
-      </Animated.View>
-
-{/* Other components here... */}
-
-<ViewerOptionsModal
-  visible={moreOptionsVisible}
-  setVisible={setMoreOptionsVisible}
-  muted={muted}
-  setMuted={setMuted}
-  rtcEngineRef={rtcEngineRef}
-/>
-
-</View> // 
-  );
+      </TouchableWithoutFeedback>
+    );
 }

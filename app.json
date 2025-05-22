@@ -8,7 +8,9 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "roundtwo",
-    "deepLinks": ["roundtwo://"],
+    "deepLinks": [
+      "roundtwo://"
+    ],
     "splash": {
       "image": "./assets/stogora-splash.png",
       "resizeMode": "contain",
@@ -50,6 +52,10 @@
         "projectId": "34bce288-d064-41c4-aa79-25891d1be285"
       }
     },
-    "owner": "chrisintorcia"
+    "owner": "chrisintorcia",
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/34bce288-d064-41c4-aa79-25891d1be285"
+    }
   }
 }

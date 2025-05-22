@@ -42,6 +42,7 @@ import styles, { ACCENT_COLOR } from './broadcasterStyles';
 import ProductQueueModal from './ProductQueueModal';
 import BroadcasterHeader from './BroadcasterHeader';
 import { BlurView } from 'expo-blur';
+import { useKeepAwake } from 'expo-keep-awake';
 
 const clearChatMessages = async (channelName, db) => {
   try {
@@ -66,6 +67,7 @@ const clearViewers = async (channelName, db) => {
 };
 
 export default function BroadcasterScreen({ route, navigation }) {
+  useKeepAwake();
   const { channelName, broadcasterUid, token } = route.params;
 
   const [joined, setJoined] = useState(false);

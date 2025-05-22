@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Animated, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, Animated, Alert } from 'react-native';
 import SwipeButton from 'rn-swipe-button';
 import styles from '../viewerstyles';
 import { auth } from '../../../firebaseConfig';
@@ -14,17 +14,47 @@ const BuyButton = React.forwardRef(({
   setSwipeKey,
   isPurchasing,
   db,
-  navigation
+  navigation,
+  channel
 }, ref) => {
   const [error, setError] = useState(null);
-  const shakeAnimation = new Animated.Value(0);
+  const shakeAnimation = useRef(new Animated.Value(0)).current;
+  const [displayPrice, setDisplayPrice] = useState(null);
+
+  useEffect(() => {
+    const fetchPrice = async () => {
+      try {
+        if (!selectedProduct) return;
+
+        const user = auth.currentUser;
+        const streamDoc = await getDoc(doc(db, 'livestreams', channel));
+        const gamifiedDiscount = streamDoc.data()?.gamifiedDiscount === true;
+
+        let finalPrice = selectedProduct.bulkPrice || 0;
+
+        if (gamifiedDiscount && user) {
+          const streakDoc = await getDoc(doc(db, 'livestreams', channel, 'streaks', user.uid));
+          const count = streakDoc.exists() ? streakDoc.data()?.purchaseCount || 0 : 0;
+          const discount = Math.min((count + 1) * 0.1, 0.5);
+          finalPrice = (selectedProduct.fullPrice * (1 - discount)).toFixed(2);
+        }
+
+        setDisplayPrice(finalPrice);
+      } catch (e) {
+        console.error('Error calculating buy button price:', e);
+        setDisplayPrice((selectedProduct.bulkPrice || 0).toFixed(2));
+      }
+    };
+
+    fetchPrice();
+  }, [selectedProduct, channel]);
 
   if (!selectedProduct) return null;
 
   const isSoldOut = selectedProduct.quantity <= 0;
   const maxQuantity = Math.min(selectedProduct.quantity, 10);
   const shippingRate = selectedProduct.shippingRate || 0;
-  const totalPrice = (selectedProduct.bulkPrice + shippingRate) * purchaseQty;
+  const totalPrice = (parseFloat(displayPrice) + shippingRate) * purchaseQty;
 
   const handleQuantityChange = (increment) => {
     const newQty = increment ? purchaseQty + 1 : purchaseQty - 1;
@@ -47,7 +77,6 @@ const BuyButton = React.forwardRef(({
       return;
     }
 
-    // Check for payment and shipping info
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     const shipping = userDoc.data()?.shippingAddress;
     const hasCard = userDoc.data()?.hasSavedPaymentMethod;
@@ -110,9 +139,7 @@ const BuyButton = React.forwardRef(({
         </TouchableOpacity>
       </View>
 
-      {error && (
-        <Text style={styles.errorText}>{error}</Text>
-      )}
+      {error && <Text style={styles.errorText}>{error}</Text>}
 
       {isSoldOut ? (
         <View style={[styles.buyButton, styles.soldOutButton]}> 

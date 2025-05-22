@@ -17,24 +17,30 @@ import { useNavigation } from '@react-navigation/native';
 const { width } = Dimensions.get('window');
 
 // helper to format date to "Thursday, May 15th at 11PM EST"
-const formatDate = dateObj => {
-  // Handle both Timestamp and regular Date objects
+const formatDate = (dateObj) => {
   const d = dateObj?.toDate?.() || new Date(dateObj);
-  if (isNaN(d.getTime())) {
-    console.error('Invalid date:', dateObj);
-    return 'Invalid Date';
-  }
-  
-  const weekday = d.toLocaleDateString('en-US', { weekday: 'long' });
-  const month = d.toLocaleDateString('en-US', { month: 'long' });
-  const day = d.getDate();
+  if (isNaN(d.getTime())) return 'Invalid Date';
+
+  const options = {
+    timeZone: 'America/New_York',
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  };
+
+  const formatter = new Intl.DateTimeFormat('en-US', options);
+  const formattedParts = formatter.formatToParts(d);
+  const dayPart = formattedParts.find(p => p.type === 'day');
+  const day = parseInt(dayPart?.value, 10);
   const daySuffix = getDaySuffix(day);
-  let hour = d.getHours();
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  hour = hour % 12 || 12;
-  
-  return `${weekday}, ${month} ${day}${daySuffix} at ${hour}${ampm} EST`;
+
+  const formattedString = formatter.format(d).replace(day.toString(), `${day}${daySuffix}`);
+  return `${formattedString} ET`;
 };
+
 
 // Helper to get the correct suffix for the day
 const getDaySuffix = (day) => {

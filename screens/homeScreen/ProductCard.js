@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import FastImage from 'react-native-fast-image';
 
 const ProductCard = ({ imageUrl, name, fullPrice, bulkPrice, brand }) => {
   const parsedFullPrice = parseFloat(fullPrice);
@@ -11,10 +12,10 @@ const ProductCard = ({ imageUrl, name, fullPrice, bulkPrice, brand }) => {
 
   return (
     <View style={styles.card}>
-      <Image
-        source={{ uri: imageUrl }}
+      <FastImage
+        source={{ uri: imageUrl, priority: FastImage.priority.high }}
         style={styles.image}
-        resizeMode="cover"
+        resizeMode={FastImage.resizeMode.cover}
       />
       <View style={styles.content}>
         <Text style={styles.name} numberOfLines={1}>{name}</Text>
@@ -34,47 +35,54 @@ const ProductCard = ({ imageUrl, name, fullPrice, bulkPrice, brand }) => {
 
 const styles = StyleSheet.create({
   card: {
+    flexDirection: 'row',
     backgroundColor: '#fff',
-    borderRadius: 12,
-    overflow: 'hidden',
+    borderRadius: 16,
+    padding: 12,
+    alignItems: 'center',
+    minHeight: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
     elevation: 3,
   },
   image: {
-    height: 120,
-    width: '100%',
-    backgroundColor: '#eee',
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    marginRight: 16,
+    backgroundColor: '#f5f5f5',
   },
   content: {
-    padding: 12,
-  },
-  brand: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
+    flex: 1,
+    marginRight: 8,
   },
   name: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#222',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
   },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
+    marginBottom: 8,
   },
   priceGroup: {
-    flexDirection: 'column',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
   },
   fullPrice: {
-    fontSize: 12,
-    textDecorationLine: 'line-through',
-    color: '#999',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#E76A54',
+    marginRight: 8,
   },
   bulkPrice: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
+    color: '#666',
   },
 });
 

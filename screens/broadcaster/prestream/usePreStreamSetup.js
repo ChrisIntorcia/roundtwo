@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, Platform, PermissionsAndroid } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -23,6 +23,7 @@ export function usePreStreamSetup() {
   const user = auth.currentUser;
   const db = getFirestore();
   const channelName = user?.uid;
+  const [gamifiedDiscount, setGamifiedDiscount] = React.useState(false); 
 
   useEffect(() => {
     fetchScheduledStreams();
@@ -233,7 +234,8 @@ export function usePreStreamSetup() {
       isLive: true,
       createdAt: serverTimestamp(),
       useAllInventory,
-      products: useAllInventory ? [] : (Array.isArray(selectedProducts) ? selectedProducts : [])
+      products: useAllInventory ? [] : (Array.isArray(selectedProducts) ? selectedProducts : []),
+      gamifiedDiscount,
     };
 
     await setDoc(doc(db, 'livestreams', user.uid), streamData);
@@ -263,6 +265,8 @@ export function usePreStreamSetup() {
     useAllInventory,
     toggleProductSelection,
     toggleUseAllInventory,
-    setSelectedProducts
+    setSelectedProducts,
+    gamifiedDiscount,
+    setGamifiedDiscount,
   };
 }

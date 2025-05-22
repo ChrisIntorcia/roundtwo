@@ -23,22 +23,38 @@ export default function usePurchase({ db, selectedProduct, channel, setShowConfe
       Alert.alert('Error', 'Missing user or product information');
       return;
     }
-
+  
     try {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (!userDoc.data()?.hasSavedPaymentMethod || !userDoc.data()?.shippingAddress) {
         Alert.alert('Setup Required', 'You must save your payment and shipping info before buying.');
         return;
       }
-
+  
       const cartRef = doc(db, 'livestreamCarts', channel, 'users', user.uid);
       const cartSnap = await getDoc(cartRef);
-
+  
+      // 🔍 Fetch stream config
+      const streamDoc = await getDoc(doc(db, 'livestreams', channel));
+      const gamifiedDiscount = streamDoc.data()?.gamifiedDiscount === true;
+  
+      // 🔢 Determine base price and discount
+      let basePrice = selectedProduct.fullPrice || selectedProduct.bulkPrice || 0;
+      let discountRate = 0;
+  
+      if (gamifiedDiscount) {
+        const streakRef = doc(db, 'livestreams', channel, 'streaks', user.uid);
+        const streakSnap = await getDoc(streakRef);
+        const purchaseCount = streakSnap.exists() ? streakSnap.data()?.purchaseCount || 0 : 0;
+        discountRate = Math.min((purchaseCount + 1) * 0.1, 0.5); // 10% → 50% max
+        basePrice = basePrice * (1 - discountRate);
+      }
+  
       const newItem = {
         productId: selectedProduct.id || '',
         title: selectedProduct.title || '',
         quantity: purchaseQty,
-        price: selectedProduct.bulkPrice || selectedProduct.fullPrice || 0,
+        price: basePrice,
         shippingRate: selectedProduct.shippingRate || 0,
         image: selectedProduct.images?.[0] || '',
         stripeAccountId: selectedProduct.stripeAccountId || '',
@@ -46,26 +62,26 @@ export default function usePurchase({ db, selectedProduct, channel, setShowConfe
         currency: selectedProduct.currency || 'usd',
         createdAt: new Date(),
       };
-
+  
       const productRefGlobal = doc(db, 'products', selectedProduct.id);
       const productRefUser = doc(db, 'users', selectedProduct.sellerId, 'products', selectedProduct.id);
-
+  
       await runTransaction(db, async (transaction) => {
         const globalSnap = await transaction.get(productRefGlobal);
         const userSnap = await transaction.get(productRefUser);
         const currentQty = globalSnap.data()?.quantity;
-
+  
         if (currentQty === undefined || currentQty < purchaseQty) {
           throw new Error('Not enough stock');
         }
-
+  
         transaction.update(productRefGlobal, { quantity: currentQty - purchaseQty });
-
+  
         if (userSnap.exists()) {
           transaction.update(productRefUser, { quantity: currentQty - purchaseQty });
         }
       });
-
+  
       let cart = {
         items: [],
         shippingApplied: false,
@@ -73,16 +89,16 @@ export default function usePurchase({ db, selectedProduct, channel, setShowConfe
         userId: user.uid,
         channel: channel
       };
-
+  
       if (cartSnap.exists()) {
         cart = {
           ...cartSnap.data(),
           updatedAt: new Date()
         };
       }
-
+  
       const existingIndex = cart.items.findIndex(i => i.productId === newItem.productId);
-
+  
       if (existingIndex >= 0) {
         cart.items[existingIndex].quantity += purchaseQty;
       } else {
@@ -93,15 +109,21 @@ export default function usePurchase({ db, selectedProduct, channel, setShowConfe
         }
         cart.items.push(newItem);
       }
-
+  
       await setDoc(cartRef, cart, { merge: true });
-
+  
+      // ✅ Update streak count if gamified
+      if (gamifiedDiscount) {
+        const streakRef = doc(db, 'livestreams', channel, 'streaks', user.uid);
+        await setDoc(streakRef, { purchaseCount: (discountRate / 0.1) }, { merge: true });
+      }
+  
       setShowConfetti(true);
     } catch (err) {
       console.error('🔥 addToCart error:', err.message);
       Alert.alert('Add to Cart Failed', err.message);
     }
-  };
+  };  
 
   const handleBuy = async (purchaseQty = 1) => {
     if (isPurchasing) return;

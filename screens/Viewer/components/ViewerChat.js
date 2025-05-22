@@ -106,37 +106,19 @@ export default function ViewerChat({
           const opacity = opacityLevels[index] || 1;
           return (
             <TouchableOpacity
-              key={item.id}
-              onLongPress={() => openReport(item)}
-              activeOpacity={0.7}
-              style={{ marginBottom: 4 }}
-            >
-              <Text style={[styles.chatMessage, { opacity }]}>  
-                <Text style={styles.chatSender}>{item.sender}: </Text>
-                {item.text}
-              </Text>
-            </TouchableOpacity>
+  key={item.id}
+  onLongPress={() => openReport(item)}
+  activeOpacity={0.7}
+  style={[styles.chatMessageWrapper, { opacity }]} // use correct bubble wrapper
+>
+  <Text style={styles.chatMessage}>
+    <Text style={styles.chatSender}>{item.sender}: </Text>
+    {item.text}
+  </Text>
+</TouchableOpacity>
           );
         })}
       </View>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.chatInputWrapper}
-      >
-        <TextInput
-          value={chatInput}
-          onChangeText={setChatInput}
-          placeholder="Say something..."
-          placeholderTextColor="#aaa"
-          style={styles.chatInput}
-          onSubmitEditing={sendMessage}
-          returnKeyType="send"
-        />
-        <TouchableOpacity onPress={sendMessage}>
-          <Text style={styles.sendButton}>Send</Text>
-        </TouchableOpacity>
-      </KeyboardAvoidingView>
 
       <Modal
         visible={reportModalVisible}
@@ -167,7 +149,7 @@ export default function ViewerChat({
 const modalStyles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.8)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -192,5 +174,30 @@ const modalStyles = StyleSheet.create({
   buttons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+});
+const styles = StyleSheet.create({
+  chatOverlay: {
+    position: 'absolute',
+    bottom: 140, // adjust based on Buy + Input bar height
+    left: 12,
+    right: 12,
+    zIndex: 999,
+  },
+  chatMessage: {
+    fontSize: 15,
+    color: '#fff',
+    lineHeight: 20,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: 'rgba(0,0,0,0.0)',
+    borderRadius: 16,
+    overflow: 'hidden',
+    alignSelf: 'flex-start',
+    maxWidth: '90%',
+  },
+  chatSender: {
+    fontWeight: '600',
+    color: '#fff',
   },
 });

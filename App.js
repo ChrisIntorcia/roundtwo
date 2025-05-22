@@ -61,7 +61,6 @@ import ScheduleProductQueue from './screens/schedule/ScheduleProductQueue';
 import EventDetails from "./screens/schedule/EventDetails";
 import BrowsePage from "./screens/spinner/BrowsePage";
 
-
 const linking = {
   prefixes: ["roundtwo://"],
   config: {
@@ -86,6 +85,7 @@ const Stack = createStackNavigator();
 export default function App() {
   const [authReady, setAuthReady] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(null);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const checkOnboarding = async () => {
@@ -93,7 +93,8 @@ export default function App() {
       setShowOnboarding(seen !== 'true');
     };
 
-    const unsubscribe = onAuthStateChanged(auth, () => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
       setAuthReady(true);
     });
 
@@ -104,9 +105,14 @@ export default function App() {
 
   if (!authReady || showOnboarding === null) return null;
 
+  const isTestUser = user?.email === 'test@stogora.shop' || user?.email === 'seller-test@stogora.shop';
+  const stripeKey = isTestUser
+    ? 'pk_test_51RILFtB3zM3odes7NZMdntyXL9FlEkI0g7V3ssk9zf7T8OScNbFHAn8RNhTSWsaGq6PCZow7mNKkHHMlwzSoMAOf00R2eoEK0j'
+    : 'pk_live_51LLWUzBDUXSD1c3Fa4lsPeJDWhC5qUP5glNZ8hA2BipifgqkdPXFTix9FUo09uggUbt6g8dAEYvlPeOCNKOY7vWa00iYYSzcCy';
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StripeProvider publishableKey="pk_live_51LLWUzBDUXSD1c3Fa4lsPeJDWhC5qUP5glNZ8hA2BipifgqkdPXFTix9FUo09uggUbt6g8dAEYvlPeOCNKOY7vWa00iYYSzcCy">
+      <StripeProvider publishableKey={stripeKey}>
         <AppProvider>
           <NavigationContainer linking={linking}>
             <Stack.Navigator

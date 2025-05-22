@@ -136,7 +136,16 @@ export default function EventDetails({ route, navigation }) {
   const formatDate = (timestamp) => {
     if (!timestamp) return '';
     const date = timestamp.toDate();
-    return format(date, 'EEEE, MMMM d, yyyy • h:mm a');
+    const options = {
+      timeZone: 'America/New_York',
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    };
+    return date.toLocaleString('en-US', options) + ' ET';
   };
 
   if (loading) {

@@ -25,12 +25,12 @@ chatOverlay: {
   paddingVertical: 8,
   overflow: 'hidden', // required for blur to be clipped
 },
-  chatMessage: {
-    color: '#fff',
-    fontSize: 14,
-    marginBottom: 4,
-    paddingHorizontal: 8,
-  },
+chatMessage: {
+  fontSize: 14,
+  fontWeight: '500',
+  color: '#fff',
+  lineHeight: 20,
+},
   chatSender: {
     fontWeight: 'bold',
     color: '#E76A54',
@@ -329,13 +329,15 @@ chatOverlay: {
     fontWeight: '600',
   },
   chatMessageWrapper: {
-  borderRadius: 12,
-  marginBottom: 4,
-  paddingHorizontal: 8,
-  paddingVertical: 4,
-  alignSelf: 'flex-start',
-  maxWidth: '80%',
-},
+    backgroundColor: 'rgba(0,0,0,0.30)',
+    borderRadius: 14,
+    marginBottom: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+    maxWidth: '90%',
+  },
+  
   optionsButton: {
     padding: 8,
     marginLeft: 8,

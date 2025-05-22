@@ -7,7 +7,9 @@ import {
   Image,
   FlatList,
   ActivityIndicator,
-  Modal
+  Modal,
+  TextInput,
+  Alert
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import {
@@ -25,6 +27,8 @@ export default function ScheduleProductQueue({ visible, onClose, onConfirm, init
   const [products, setProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredProducts, setFilteredProducts] = useState([]);
 
   // Memoize fetchProducts to prevent recreation on every render
   const fetchProducts = useCallback(async () => {
@@ -42,6 +46,7 @@ export default function ScheduleProductQueue({ visible, onClose, onConfirm, init
         ...doc.data()
       }));
       setProducts(productsList);
+      setFilteredProducts(productsList);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -62,6 +67,18 @@ export default function ScheduleProductQueue({ visible, onClose, onConfirm, init
       setSelectedProducts(initialProducts);
     }
   }, [visible, initialProducts]);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredProducts(products);
+    } else {
+      setFilteredProducts(
+        products.filter(product =>
+          product.title.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      );
+    }
+  }, [searchQuery, products]);
 
   const toggleProductSelection = useCallback((productId) => {
     setSelectedProducts(prev => {
@@ -138,19 +155,50 @@ export default function ScheduleProductQueue({ visible, onClose, onConfirm, init
             Choose the products you want to showcase in this stream
           </Text>
 
+          {/* Search Bar */}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#F5F6FA',
+            borderRadius: 12,
+            marginBottom: 16,
+            paddingHorizontal: 12,
+            height: 44,
+          }}>
+            <MaterialIcons name="search" size={24} color="#666" style={{ marginRight: 8 }} />
+            <TextInput
+              style={{
+                flex: 1,
+                fontSize: 16,
+                color: '#222',
+                paddingVertical: 0,
+                height: '100%',
+              }}
+              placeholder="Search products..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor="#999"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <MaterialIcons name="close" size={20} color="#666" />
+              </TouchableOpacity>
+            )}
+          </View>
+
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#213E4D" />
             </View>
           ) : (
             <FlatList
-              data={products}
+              data={filteredProducts}
               renderItem={renderProductItem}
               keyExtractor={item => item.id}
               contentContainerStyle={styles.productList}
               ListEmptyComponent={
                 <Text style={styles.emptyText}>
-                  No products available. Add products in your seller hub.
+                  {searchQuery ? 'No products found' : 'No products available. Add products in your seller hub.'}
                 </Text>
               }
             />
@@ -160,7 +208,6 @@ export default function ScheduleProductQueue({ visible, onClose, onConfirm, init
     </Modal>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -270,3 +317,4 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
 });
+

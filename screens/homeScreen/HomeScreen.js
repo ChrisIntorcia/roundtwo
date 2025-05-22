@@ -153,11 +153,10 @@ const HomeScreen = () => {
   const fetchNextStream = async () => {
     try {
       const now = new Date();
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   
       const streamQuery = query(
         collection(db, 'scheduledStreams'),
-        where('date', '>=', Timestamp.fromDate(oneHourAgo)),
+        where('date', '>', Timestamp.fromDate(now)),
         orderBy('date', 'asc'),
         limit(1)
       );
@@ -203,16 +202,17 @@ const HomeScreen = () => {
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-    // Format the date
+    // Format the date with consistent timezone
     const options = { 
       weekday: 'long', 
       month: 'long', 
       day: 'numeric',
       hour: 'numeric',
       minute: 'numeric',
-      hour12: true 
+      hour12: true,
+      timeZone: 'America/New_York'
     };
-    const formattedDate = streamDate.toLocaleDateString('en-US', options);
+    const formattedDate = streamDate.toLocaleString('en-US', options) + ' ET';
 
     let timeString = '';
     if (days > 0) {
